@@ -1,0 +1,5 @@
+node_modules/
+schema.sql
+venv/
+env/
+djg_api_rest/__pycache__
