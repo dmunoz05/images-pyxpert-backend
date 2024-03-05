@@ -2,4 +2,6 @@ node_modules/
 schema.sql
 venv/
 env/
-djg_api_rest/__pycache__
+api/__pycache__
+ipx/__pycache__
+
