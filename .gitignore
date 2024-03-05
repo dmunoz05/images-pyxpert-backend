@@ -4,4 +4,4 @@ venv/
 env/
 api/__pycache__
 ipx/__pycache__
-
+.vscode/
