@@ -12,7 +12,7 @@ import cv2
 # Create your views here.
 
 
-#PEDIENTE DE REVISAR FUNCIONALIDAD E INSTALAR LIBRERIAS
+# PEDIENTE DE REVISAR FUNCIONALIDAD E INSTALAR LIBRERIAS
 import cv2
 import os
 from django.conf import settings
@@ -23,8 +23,21 @@ class ProgrammerViewSet(viewsets.ModelViewSet):
     queryset = Programmer.objects.all()
     serializer_class = ProgrammerSerializer
 
+
+class ProcessKeys(viewsets.ModelViewSet):
+    def get_keys(request):
+        key_get = request.GET['key']
+        try:
+            if (key_get == 'ckr99TDQ4FsfQqkEwKt7qxUt8P7RRFea'):
+                key = 'ASfvWec8hbwFHoxy'
+                iv = 'zyrDA65j2qb9HMtn'
+                return JsonResponse({'status': 'success', 'message': {'key': key, 'iv': iv}})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Error inesperado' })
+
+
 class ProcesImages(viewsets.ModelViewSet):
-    #devolver shape
+    # devolver shape
     def get_shape(request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
