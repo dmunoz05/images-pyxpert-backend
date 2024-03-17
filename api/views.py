@@ -2,6 +2,7 @@ from .serializer import ProgrammerSerializer
 from django.http import JsonResponse, HttpResponse
 from rest_framework import viewsets
 from .models import Programmer
+from decouple import config
 from io import BytesIO
 from PIL import Image
 import urllib.request
@@ -28,10 +29,13 @@ class ProcessKeys(viewsets.ModelViewSet):
     def get_keys(request):
         key_get = request.GET['key']
         try:
-            if (key_get == 'ckr99TDQ4FsfQqkEwKt7qxUt8P7RRFea'):
-                key = 'ASfvWec8hbwFHoxy'
-                iv = 'zyrDA65j2qb9HMtn'
+            key_validate = config('KEY_GET_VALIDATE')
+            if (key_get == key_validate):
+                key = config('KEY_CRYPT')
+                iv = config('IV_CRYPT')
                 return JsonResponse({'status': 'success', 'message': {'key': key, 'iv': iv}})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'Error inesperado' })
 
