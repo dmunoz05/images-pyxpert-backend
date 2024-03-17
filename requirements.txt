@@ -8,6 +8,7 @@ dj-database-url==2.1.0
 Django==5.0.3
 django-cors-headers==4.3.1
 djangorestframework==3.14.0
+gunicorn==21.2.0
 idna==3.6
 itypes==1.2.0
 Jinja2==3.1.3
