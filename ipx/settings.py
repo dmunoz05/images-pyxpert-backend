@@ -94,6 +94,7 @@ DATABASES = {
 #CORS
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:4200',
+    'http://localhost:4200/begin/home',
     'https://images-pyxpert-frontend.vercel.app'
 ]
 
