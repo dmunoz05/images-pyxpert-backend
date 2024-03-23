@@ -30,13 +30,26 @@ class ProgrammerViewSet(viewsets.ModelViewSet):
 
 
 class ProcessKeys(viewsets.ModelViewSet):
-    def get_keys(request):
+    def get_key_client_id(request):
         key_get = request.GET['key']
         try:
-            key_validate = config('KEY_GET_VALIDATE')
+            key_validate = config('KEY_GET_VALIDATE_CLIENT_ID')
             if (key_get == key_validate):
-                key = config('KEY_CRYPT')
-                iv = config('IV_CRYPT')
+                key = config('KEY_CRYPT_CLIENT_ID')
+                iv = config('IV_CRYPT_CLIENT_ID')
+                return JsonResponse({'status': 'success', 'message': {'key': key, 'iv': iv}})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Error inesperado' })
+
+    def get_key_ia(request):
+        key_get = request.GET['key']
+        try:
+            key_validate = config('KEY_GET_VALIDATE_IA')
+            if (key_get == key_validate):
+                key = config('KEY_CRYPT_IA')
+                iv = config('IV_CRYPT_IA')
                 return JsonResponse({'status': 'success', 'message': {'key': key, 'iv': iv}})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
