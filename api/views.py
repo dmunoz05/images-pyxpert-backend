@@ -1,14 +1,18 @@
-from .serializer import ProgrammerSerializer
+import json
+from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
+from .serializer import ProgrammerSerializer
 from rest_framework import viewsets
 from .models import Programmer
 from decouple import config
 from io import BytesIO
 from PIL import Image
+from io import StringIO
 import urllib.request
 import numpy as np
 import base64
 import cv2
+
 
 # Create your views here.
 
@@ -53,7 +57,7 @@ class ProcesImages(viewsets.ModelViewSet):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
-    def process_image(request):
+    def process_image_google(request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
 
@@ -81,3 +85,40 @@ class ProcesImages(viewsets.ModelViewSet):
         else:
             # Si no se proporciona el parámetro 'image_url' en la solicitud, devuelve un mensaje de error
             return JsonResponse({'status': 'error', 'message': 'Debe proporcionar la URL de la imagen a procesar.'})
+
+    @csrf_exempt
+    def process_image_pc(request):
+        if request.method == 'POST':
+            try:
+                # Leer la imagen del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                image_base64 = body_data.get('image')
+                if image_base64:
+                    decode_image = base64.b64decode(image_base64)
+
+                    # Decodificar la imagen usando OpenCV
+                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
+                    image = cv2.imdecode(im_arr, -1)
+
+                    # Cambiar a gris
+                    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+                    buffer = BytesIO()
+                    # Convertir la imagen a BytesIO
+                    Image.fromarray(gray_image).save(buffer, format='PNG')
+
+                    # Obtener los datos de la imagen
+                    image_data = buffer.getvalue()
+
+                    # Devolver los datos de la imagen como respuesta
+                    return HttpResponse(image_data, content_type="image/png")
+                else:
+                    # Devuelve un mensaje de error si no se proporciona una imagen
+                    return JsonResponse({'status': 'error', 'message': 'Debe proporcionar una imagen.'})
+            except Exception as e:
+                # Devuelve un mensaje de error si no se puede procesar la imagen
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
+        else:
+            # Devuelve un mensaje de error si no se recibe una solicitud POST
+            return JsonResponse({'status': 'error', 'message': 'Se requiere una solicitud POST para procesar la imagen.'})
