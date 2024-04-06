@@ -5,6 +5,7 @@ from .serializer import ProgrammerSerializer
 from rest_framework import viewsets
 from .models import Programmer
 from decouple import config
+from django.conf import settings
 from io import BytesIO
 from PIL import Image
 from io import StringIO
@@ -12,16 +13,8 @@ import urllib.request
 import numpy as np
 import base64
 import cv2
-import matplotlib.pyplot as plt
-
-# Create your views here.
-
-
-# PEDIENTE DE REVISAR FUNCIONALIDAD E INSTALAR LIBRERIAS
-import cv2
 import os
-from django.conf import settings
-from django.http import JsonResponse
+import matplotlib.pyplot as plt
 
 
 class ProgrammerViewSet(viewsets.ModelViewSet):
@@ -57,71 +50,121 @@ class ProcessKeys(viewsets.ModelViewSet):
             return JsonResponse({'status': 'error', 'message': 'Error inesperado'})
 
 
-class ProcesImages(viewsets.ModelViewSet):
-
-    def search_contourns_img(request):
-        if ('image_url' in request.GET):
-            image_url = request.GET['image_url']
+class ProcessImages(viewsets.ModelViewSet):
+    @csrf_exempt
+    def search_contourns_with_color_img(request):
+        if request.method == 'POST':
             try:
+                # Leer la imagen del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                image_base64 = body_data.get('image')
+                if image_base64:
+                    decode_image = base64.b64decode(image_base64)
+                    # Decodificar la imagen usando OpenCV
+                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
+                    Img = cv2.imdecode(im_arr, -1)
 
-                def draw(mask, color, textColor, img, ruta):
-                    contornos, _ = cv2.findContours(
-                        mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    for c in contornos:
-                        area = cv2.contourArea(c)
-                        if area > 2000:
-                            M = cv2.moments(c)
-                            if (M["m00"] == 0):
-                                M["m00"] = 1
-                            x = int(M["m10"]/M["m00"])
-                            y = int(M["m01"]/M["m00"])
-                            cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
-                            font = cv2.FONT_HERSHEY_SIMPLEX
-                            cv2.putText(img, textColor, (x+10, y), font,
-                                        0.95, (0, 255, 0), 1, cv2.LINE_AA)
-                            newContourn = cv2.convexHull(c)
-                            cv2.drawContours(Img, [newContourn], 0, color, 3)
-                            # Añadir contorno
-                            listSingleContourn.append(
-                                {"contorno": newContourn, "Ruta": ruta})
+                    def draw(mask, color, textColor, img):
+                        contornos, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        for c in contornos:
+                            area = cv2.contourArea(c)
+                            if area > 2000:
+                                M = cv2.moments(c)
+                                if (M["m00"] == 0):
+                                    M["m00"] = 1
+                                x = int(M["m10"]/M["m00"])
+                                y = int(M["m01"]/M["m00"])
+                                cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
+                                font = cv2.FONT_HERSHEY_SIMPLEX
+                                cv2.putText(img, textColor, (x+10, y), font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
+                                newContourn = cv2.convexHull(c)
+                                cv2.drawContours(Img, [newContourn], 0, color, 3)
 
-                # Procesando la imagen
-                RuteImg = 'dorito13.jpg'
-                Img = cv2.imread(RuteImg)
-                imgGray = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
-                Imagen_hsv = cv2.cvtColor(Img, cv2.COLOR_BGR2HSV)
-                ImgResize = cv2.resize(np.uint8(imgGray), (50, 50))
+                    # Colores HSV
 
-                # Detectar contornos
-                listSingleContourn = []
+                    # Rojo
+                    redBajo1 = np.array([0, 100, 20], np.uint8)
+                    redAlto1 = np.array([5, 255, 255], np.uint8)
+                    redBajo2 = np.array([175, 100, 20], np.uint8)
+                    redAlto2 = np.array([180, 255, 255], np.uint8)
 
-                # Colores HSV
-                # Naranja
-                orangeBajo = np.array([5, 100, 20], np.uint8)
-                orangeAlto = np.array([15, 255, 255], np.uint8)
+                    # Naranja
+                    orangeBajo = np.array([5, 100, 20], np.uint8)
+                    orangeAlto = np.array([15, 255, 255], np.uint8)
 
-                # Amarillo
-                amarilloBajo = np.array([15, 100, 20], np.uint8)
-                amarilloAlto = np.array([45, 255, 255], np.uint8)
+                    # Amarillo
+                    amarilloBajo = np.array([15, 100, 20], np.uint8)
+                    amarilloAlto = np.array([45, 255, 255], np.uint8)
 
-                # Leer imagen
-                frameHSV = cv2.cvtColor(Img, cv2.COLOR_BGR2HSV)
+                    # Verde
+                    verdeBajo = np.array([45, 100, 20], np.uint8)
+                    verdeAlto = np.array([85, 255, 255], np.uint8)
 
-                # Mascara naranja y amarillo
-                maskOrange = cv2.inRange(frameHSV, orangeBajo, orangeAlto)
-                maskYellow = cv2.inRange(frameHSV, amarilloBajo, amarilloAlto)
-                maskOrangeAndYellow = cv2.add(maskOrange, maskYellow)
+                    # Azul claro
+                    azulBajo1 = np.array([100, 100, 20], np.uint8)
+                    azulAlto1 = np.array([125, 255, 255], np.uint8)
 
-                # Dibujamos los contornos
-                draw(maskOrangeAndYellow, (0, 165, 255), 'Centro', Img, RuteImg)
+                    # Azul oscuro
+                    azulBajo2 = np.array([125, 100, 20], np.uint8)
+                    azulAlto2 = np.array([130, 255, 255], np.uint8)
 
-                # Procesar imagen
-                # plt.imshow(Img, cmap='gray')
-                # plt.title('Imagen en escala de grises')
-                # plt.axis('off')
-                # plt.show()
+                    # Morado
+                    moradoBajo = np.array([135, 100, 20], np.uint8)
+                    moradoAlto = np.array([145, 255, 255], np.uint8)
 
-                return JsonResponse({'status': 'success', 'image': Img})
+                    # Violeta
+                    violetaBajo = np.array([145, 100, 20], np.uint8)
+                    violetaAlto = np.array([170, 255, 255], np.uint8)
+
+                    frameHSV = cv2.cvtColor(Img, cv2.COLOR_BGR2HSV)
+                    # Detectamos los colores
+
+                    # Rojo
+                    maskRed1 = cv2.inRange(frameHSV, redBajo1, redAlto1)
+                    maskRed2 = cv2.inRange(frameHSV, redBajo2, redAlto2)
+                    maskRed = cv2.add(maskRed1, maskRed2)
+
+                    # Naranja
+                    maskOrange = cv2.inRange(frameHSV, orangeBajo, orangeAlto)
+
+                    # Amarillo
+                    maskAmarillo = cv2.inRange(frameHSV, amarilloBajo, amarilloAlto)
+
+                    # Verde
+                    maskVerde = cv2.inRange(frameHSV, verdeBajo, verdeAlto)
+
+                    # Azul
+                    maskAzul1 = cv2.inRange(frameHSV, azulBajo1, azulAlto1)
+                    maskAzul2 = cv2.inRange(frameHSV, azulBajo2, azulAlto2)
+                    maskAzul = cv2.add(maskAzul1, maskAzul2)
+
+                    # Morado
+                    maskMorado = cv2.inRange(frameHSV, moradoBajo, moradoAlto)
+
+                    # Violeta
+                    maskVioleta = cv2.inRange(frameHSV, violetaBajo, violetaAlto)
+
+                    # Dibujamos los contornos
+                    draw(maskRed, (0, 0, 255), 'Rojo', Img)
+                    draw(maskOrange, (0, 165, 255), 'Naranja', Img)
+                    draw(maskAmarillo, (0, 255, 255), 'Amarillo', Img)
+                    draw(maskVerde, (0, 255, 0), 'Verde', Img)
+                    draw(maskAzul, (255, 0, 0), 'Azul', Img)
+                    draw(maskMorado, (255, 0, 255), 'Morado', Img)
+                    draw(maskVioleta, (255, 0, 255), 'Violeta', Img)
+                    # draw(maskOrangeAndYellow, (0, 165, 255), 'Centro', Img)
+
+                    buffer = BytesIO()
+
+                    # Convertir la imagen a BytesIO
+                    Image.fromarray(Img).save(buffer, format='PNG')
+
+                    # Obtener los datos de la imagen
+                    image_data = buffer.getvalue()
+
+                    # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
+                return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
