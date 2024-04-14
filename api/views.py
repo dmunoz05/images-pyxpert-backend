@@ -1,20 +1,23 @@
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
+from sklearn.preprocessing import MinMaxScaler
 from .serializer import ProgrammerSerializer
 from rest_framework import viewsets
+from django.conf import settings
+import matplotlib.pyplot as plt
 from .models import Programmer
 from decouple import config
-from django.conf import settings
+from io import StringIO
 from io import BytesIO
 from PIL import Image
-from io import StringIO
 import urllib.request
 import numpy as np
 import base64
+import pickle
+import joblib
 import cv2
 import os
-import matplotlib.pyplot as plt
 
 
 class ProgrammerViewSet(viewsets.ModelViewSet):
@@ -52,6 +55,122 @@ class ProcessKeys(viewsets.ModelViewSet):
 
 class ProcessImages(viewsets.ModelViewSet):
     @csrf_exempt
+    def model_search_DPC(request):
+        if request.method == 'POST':
+            try:
+                # Leer la imagen del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                image_base64 = body_data.get('image')
+                if image_base64:
+                    decode_image = base64.b64decode(image_base64)
+                    # Decodificar la imagen usando OpenCV
+                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
+                    Img = cv2.imdecode(im_arr, -1)
+
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+
+                    # if "Repositorios" in cwd:
+                    #     current_directory = "C:\model_DPC.pkl"
+                    # else:
+                    current_directory = os.path.join(cwd, 'models', 'model_DPC.pkl')
+
+                    # modelo_entrenado = pickle.load(open(current_directory, 'rb'))
+
+                    # Construir la ruta completa al archivo
+                    # modelo_entrenado = os.path.join(current_directory, 'models', 'model_DPC.pkl')
+
+                    # with open(current_directory, 'wb') as f:
+                    #     modelo_entrenado = pickle.load(f)
+
+                    # Cargar archivos desde el sistema local
+                    modelo_entrenado = joblib.load(current_directory)
+
+                    # Obtener el nombre del archivo cargado
+                    # Nombre_archivo = list(uploaded.keys())[0]
+
+                    # Imagen = cv2.imread(Img)
+
+                    # Procesando la imagen
+                    Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
+                    Grisinverted2 = cv2.bitwise_not(Gris)
+                    Bin = Grisinverted2 > 100
+                    Bin = cv2.resize(np.uint8(Bin), (50, 50))
+
+                    plt.imshow(Bin, vmin='0', vmax='1', cmap='gray')
+                    plt.show()
+
+                    # Midiendo el área de las letras (Igual que en el entrenamiento)
+                    X_new = np.zeros((1, 15))
+
+                    # Encontrar los contornos de la imagen
+                    contours, _ = cv2.findContours(
+                        np.uint8(Bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    if len(contours) > 0:
+                        # Tomar solo el contorno más grande (puede haber varios)
+                        largest_contour = max(contours, key=cv2.contourArea)
+
+                    # Calcular área
+                    area = cv2.contourArea(largest_contour)
+
+                    # Calcular perímetro
+                    perimeter = cv2.arcLength(largest_contour, closed=True)
+
+                    # Calcular el centro de masa
+                    M = cv2.moments(largest_contour)
+                    center_x = int(M['m10'] / M['m00'])
+                    center_y = int(M['m01'] / M['m00'])
+
+                    # Calcular la circularidad
+                    circularity = (4 * np.pi * area) / (perimeter ** 2)
+
+                    # Calcular la elipticidad
+                    _, (major_axis, minor_axis), _ = cv2.fitEllipse(
+                        largest_contour)
+                    ellipticity = major_axis / minor_axis
+
+                    # Calcular los momentos de Hu
+                    Hu_moments = np.transpose(
+                        cv2.HuMoments(M))  # Siete valores
+
+                    # Agregando alto y ancho
+                    P1, P2, Ancho, Alto = cv2.boundingRect(np.uint8(Bin))
+
+                    # Almacenando resultados
+                    X_new[0, 0] = area
+                    X_new[0, 1] = perimeter
+                    X_new[0, 2] = ellipticity
+                    X_new[0, 3] = center_x
+                    X_new[0, 4] = center_y
+                    X_new[0, 5] = circularity
+                    X_new[0, 6:13] = Hu_moments
+                    X_new[0, 13] = Alto
+                    X_new[0, 14] = Ancho
+
+                    # Ojo, se debe normalizar
+                    scaler = MinMaxScaler()
+
+                    # Ajustar el escalador a tus datos
+                    # Asume que tienes un conjunto de entrenamiento X_train
+                    scaler.fit(X_new)
+
+                    # Transformar los nuevos datos con el escalador ajustado
+                    X_new_normalized = scaler.transform(X_new)
+
+                    if modelo_entrenado.predict(X_new_normalized) == 0:
+                        messajeResponse = 'Estoy reconociendo papas'
+                    if modelo_entrenado.predict(X_new_normalized) == 1:
+                        messajeResponse = 'Estoy reconociendo Doritos'
+                    if modelo_entrenado.predict(X_new_normalized) == 2:
+                        messajeResponse = 'Estoy reconociendo Cheese tris'
+                    # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
+                return JsonResponse({'status': 'error', 'message': messajeResponse})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': e.args})
+
+    @csrf_exempt
     def search_contourns_with_color_img(request):
         if request.method == 'POST':
             try:
@@ -66,7 +185,8 @@ class ProcessImages(viewsets.ModelViewSet):
                     Img = cv2.imdecode(im_arr, -1)
 
                     def draw(mask, color, textColor, img):
-                        contornos, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        contornos, _ = cv2.findContours(
+                            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                         for c in contornos:
                             area = cv2.contourArea(c)
                             if area > 2000:
@@ -77,9 +197,11 @@ class ProcessImages(viewsets.ModelViewSet):
                                 y = int(M["m01"]/M["m00"])
                                 cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
                                 font = cv2.FONT_HERSHEY_SIMPLEX
-                                cv2.putText(img, textColor, (x+10, y), font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
+                                cv2.putText(img, textColor, (x+10, y),
+                                            font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
                                 newContourn = cv2.convexHull(c)
-                                cv2.drawContours(Img, [newContourn], 0, color, 3)
+                                cv2.drawContours(
+                                    Img, [newContourn], 0, color, 3)
 
                     # Colores HSV
 
@@ -129,7 +251,8 @@ class ProcessImages(viewsets.ModelViewSet):
                     maskOrange = cv2.inRange(frameHSV, orangeBajo, orangeAlto)
 
                     # Amarillo
-                    maskAmarillo = cv2.inRange(frameHSV, amarilloBajo, amarilloAlto)
+                    maskAmarillo = cv2.inRange(
+                        frameHSV, amarilloBajo, amarilloAlto)
 
                     # Verde
                     maskVerde = cv2.inRange(frameHSV, verdeBajo, verdeAlto)
@@ -143,7 +266,8 @@ class ProcessImages(viewsets.ModelViewSet):
                     maskMorado = cv2.inRange(frameHSV, moradoBajo, moradoAlto)
 
                     # Violeta
-                    maskVioleta = cv2.inRange(frameHSV, violetaBajo, violetaAlto)
+                    maskVioleta = cv2.inRange(
+                        frameHSV, violetaBajo, violetaAlto)
 
                     # Dibujamos los contornos
                     draw(maskRed, (0, 0, 255), 'Rojo', Img)
