@@ -29,7 +29,6 @@ SECRET_KEY = os.environ.get('SECRET_KEY', default='your secret key')
 DEBUG = 'RENDER' not in os.environ
 
 ALLOWED_HOSTS = []
-
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -80,7 +79,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ipx.wsgi.application'
 
-ASGI_APPLICATION = 'ipx.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -91,6 +89,7 @@ DATABASES = {
         conn_max_age=600
     )
 }
+
 
 #CORS
 CORS_ALLOWED_ORIGINS = [

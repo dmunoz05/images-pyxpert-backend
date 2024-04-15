@@ -1,9 +1,8 @@
-from channels.generic.websocket import WebsocketConsumer
+import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from sklearn.preprocessing import MinMaxScaler
 from .serializer import ProgrammerSerializer
-from django.shortcuts import render
 from rest_framework import viewsets
 from django.conf import settings
 import matplotlib.pyplot as plt
@@ -17,7 +16,6 @@ import numpy as np
 import base64
 import pickle
 import joblib
-import json
 import cv2
 import os
 
@@ -26,15 +24,6 @@ class ProgrammerViewSet(viewsets.ModelViewSet):
     queryset = Programmer.objects.all()
     serializer_class = ProgrammerSerializer
 
-def streaming_video(request):
-    # Lógica para capturar los frames del video
-    frames = ...
-
-    # Envía los frames al consumidor de WebSocket
-    for frame in frames:
-        VideoConsumer.enviar_frame(frame)
-
-    return render(request, 'streaming_video.html')
 
 class ProcessKeys(viewsets.ModelViewSet):
     def get_key_client_id(request):
@@ -63,22 +52,6 @@ class ProcessKeys(viewsets.ModelViewSet):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'Error inesperado'})
 
-class ProcessVideo(viewsets.ModelViewSet):
-    def connect(self):
-        self.accept()
-
-    def disconnect(self, close_code):
-        pass  # No es necesario hacer nada al desconectar
-
-    def receive(self, text_data):
-        # Recibe los datos del cliente (si los hay)
-        pass
-
-    def send_frame(self, frame):
-        # Envía el frame al cliente
-        self.send(text_data=json.dumps({
-            'frame': frame,
-        }))
 
 class ProcessImages(viewsets.ModelViewSet):
     @csrf_exempt
