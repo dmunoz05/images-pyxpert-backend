@@ -1,12 +1,9 @@
-import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from sklearn.preprocessing import MinMaxScaler
-from .serializer import ProgrammerSerializer
 from rest_framework import viewsets
 from django.conf import settings
 import matplotlib.pyplot as plt
-from .models import Programmer
 from decouple import config
 from io import StringIO
 from io import BytesIO
@@ -16,13 +13,9 @@ import numpy as np
 import base64
 import pickle
 import joblib
+import json
 import cv2
 import os
-
-
-class ProgrammerViewSet(viewsets.ModelViewSet):
-    queryset = Programmer.objects.all()
-    serializer_class = ProgrammerSerializer
 
 
 class ProcessKeys(viewsets.ModelViewSet):
@@ -54,7 +47,77 @@ class ProcessKeys(viewsets.ModelViewSet):
 
 
 class ProcessImages(viewsets.ModelViewSet):
+
+    def characteristic_image_google(request):
+        key_get = request.GET['key']
+        try:
+
+            return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Error inesperado'})
+
     @csrf_exempt
+    def characteristic_image_pc(request):
+        if request.method == 'POST':
+            try:
+                # Leer la imagen del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                image_base64 = body_data.get('image')
+                if image_base64:
+                    decode_image = base64.b64decode(image_base64)
+                    # Decodificar la imagen usando OpenCV
+                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
+                    Img = cv2.imdecode(im_arr, -1)
+
+                    # Procesando la imagen
+                    Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
+                    Grisinverted2 = cv2.bitwise_not(Gris)
+                    Bin = Grisinverted2 > 100
+                    Bin = cv2.resize(np.uint8(Bin), (50, 50))
+
+                    # Encontrar los contornos de la imagen
+                    contours, _ = cv2.findContours(
+                        np.uint8(Bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    if len(contours) > 0:
+                        # Tomar solo el contorno más grande (puede haber varios)
+                        largest_contour = max(contours, key=cv2.contourArea)
+
+                    # Calcular área
+                    area = cv2.contourArea(largest_contour)
+
+                    # Calcular perímetro
+                    perimeter = cv2.arcLength(largest_contour, closed=True)
+
+                    # Calcular el centro de masa
+                    M = cv2.moments(largest_contour)
+                    center_x = int(M['m10'] / M['m00'])
+                    center_y = int(M['m01'] / M['m00'])
+
+                    # Calcular la circularidad
+                    circularity = (4 * np.pi * area) / (perimeter ** 2)
+
+                    # Calcular la elipticidad
+                    _, (major_axis, minor_axis), _ = cv2.fitEllipse(
+                        largest_contour)
+                    ellipticity = major_axis / minor_axis
+
+                    # Calcular los momentos de Hu
+                    Hu_moments = np.transpose(
+                        cv2.HuMoments(M))  # Siete valores
+
+                    # Agregando alto y ancho
+                    P1, P2, Width, Height = cv2.boundingRect(np.uint8(Bin))
+
+                    data = {'area': area, 'perimeter': perimeter, 'ellipticity': ellipticity, 'center_x': center_x,
+                            'center_y': center_y, 'circularity': circularity, 'Hu_moments': Hu_moments.tolist(), 'Height': Height, 'Width': Width}
+
+                return JsonResponse({'status': 200, 'characteristics': data})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': e.args})
+
+    @ csrf_exempt
     def model_search_DPC(request):
         if request.method == 'POST':
             try:
@@ -70,27 +133,14 @@ class ProcessImages(viewsets.ModelViewSet):
 
                     # Obtener el directorio de trabajo actual
                     cwd = os.getcwd()
-
-                    # if "Repositorios" in cwd:
-                    #     current_directory = "C:\model_DPC.pkl"
-                    # else:
-                    current_directory = os.path.join(cwd, 'models', 'model_DPC.pkl')
-
-                    # modelo_entrenado = pickle.load(open(current_directory, 'rb'))
-
-                    # Construir la ruta completa al archivo
-                    # modelo_entrenado = os.path.join(current_directory, 'models', 'model_DPC.pkl')
-
-                    # with open(current_directory, 'wb') as f:
-                    #     modelo_entrenado = pickle.load(f)
+                    current_directory = os.path.join(
+                        cwd, 'models', 'Modelo_knn5.pkl')
 
                     # Cargar archivos desde el sistema local
-                    modelo_entrenado = joblib.load(current_directory)
+                    with open(current_directory, 'rb') as f:
+                        modelo_entrenado = pickle.load(f)
 
-                    # Obtener el nombre del archivo cargado
-                    # Nombre_archivo = list(uploaded.keys())[0]
-
-                    # Imagen = cv2.imread(Img)
+                    # modelo_entrenado = joblib.load(current_directory)
 
                     # Procesando la imagen
                     Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
@@ -170,8 +220,8 @@ class ProcessImages(viewsets.ModelViewSet):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': e.args})
 
-    @csrf_exempt
-    def search_contourns_with_color_img(request):
+    @ csrf_exempt
+    def search_contourns_with_color_img_pc(request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
@@ -315,7 +365,7 @@ class ProcessImages(viewsets.ModelViewSet):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
-    def process_image_google(request):
+    def process_bw_image_google(request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
 
@@ -344,8 +394,8 @@ class ProcessImages(viewsets.ModelViewSet):
             # Si no se proporciona el parámetro 'image_url' en la solicitud, devuelve un mensaje de error
             return JsonResponse({'status': 'error', 'message': 'Debe proporcionar la URL de la imagen a procesar.'})
 
-    @csrf_exempt
-    def process_image_pc(request):
+    @ csrf_exempt
+    def process_bw_image_pc(request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
