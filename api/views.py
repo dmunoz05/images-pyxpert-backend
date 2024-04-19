@@ -391,7 +391,7 @@ class ProcessImages(viewsets.ModelViewSet):
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     @ csrf_exempt
-    def search_contourns_with_colo_img_pc(request):
+    def search_contourns_img_pc(request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
