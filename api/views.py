@@ -1,6 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import StratifiedShuffleSplit
 from rest_framework import viewsets
 from django.conf import settings
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ class ProcessKeys(viewsets.ModelViewSet):
             else:
                 return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': e.args})
+            return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     def get_key_ia(request):
         key_get = request.GET['key']
@@ -43,7 +44,7 @@ class ProcessKeys(viewsets.ModelViewSet):
             else:
                 return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': e.args})
+            return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
 
 class ProcessImages(viewsets.ModelViewSet):
@@ -92,8 +93,7 @@ class ProcessImages(viewsets.ModelViewSet):
                 ellipticity = major_axis / minor_axis
 
                 # Calcular los momentos de Hu
-                _hu_moments = np.transpose(
-                    cv2.HuMoments(M))  # Siete valores
+                _hu_moments = np.transpose(cv2.HuMoments(M))  # Siete valores
 
                 # Agregando alto y ancho
                 _p1, _p2, _w, _h = cv2.boundingRect(np.uint8(_bin))
@@ -103,7 +103,7 @@ class ProcessImages(viewsets.ModelViewSet):
 
                 return JsonResponse({'status': 200, 'characteristics': data})
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': e.args})
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     @csrf_exempt
     def characteristic_image_pc(request):
@@ -164,7 +164,7 @@ class ProcessImages(viewsets.ModelViewSet):
 
                 return JsonResponse({'status': 200, 'characteristics': data})
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': e.args})
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     @ csrf_exempt
     def model_search_DPC(request):
@@ -183,20 +183,21 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Obtener el directorio de trabajo actual
                     cwd = os.getcwd()
                     current_directory = os.path.join(
-                        cwd, 'models', 'Modelo_knn5.pkl')
+                        cwd, 'models', 'Modelo_knn4.pkl')
 
                     # Cargar archivos desde el sistema local
                     with open(current_directory, 'rb') as f:
-                        modelo_entrenado = pickle.load(f)
+                        # Con el KNN5
+                        # modelo_entrenado = pickle.load(f)
+
+                        # Con el KNN4
+                        modelo_entrenado = joblib.load(f)
 
                     # Procesando la imagen
                     _gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
                     _grisinverted2 = cv2.bitwise_not(_gris)
                     _in = _grisinverted2 > 100
                     _bin = cv2.resize(np.uint8(_in), (50, 50))
-
-                    plt.imshow(_bin, vmin='0', vmax='1', cmap='gray')
-                    plt.show()
 
                     # Midiendo el área de las letras (Igual que en el entrenamiento)
                     _x_new = np.zeros((1, 15))
@@ -209,62 +210,60 @@ class ProcessImages(viewsets.ModelViewSet):
                         # Tomar solo el contorno más grande (puede haber varios)
                         largest_contour = max(contours, key=cv2.contourArea)
 
-                    # Calcular área
-                    area = cv2.contourArea(largest_contour)
+                        # Calcular área
+                        area = cv2.contourArea(largest_contour)
 
-                    # Calcular perímetro
-                    perimeter = cv2.arcLength(largest_contour, closed=True)
+                        # Calcular perímetro
+                        perimeter = cv2.arcLength(largest_contour, closed=True)
 
-                    # Calcular el centro de masa
-                    M = cv2.moments(largest_contour)
-                    center_x = int(M['m10'] / M['m00'])
-                    center_y = int(M['m01'] / M['m00'])
+                        # Calcular el centro de masa
+                        M = cv2.moments(largest_contour)
+                        center_x = int(M['m10'] / M['m00'])
+                        center_y = int(M['m01'] / M['m00'])
 
-                    # Calcular la circularidad
-                    circularity = (4 * np.pi * area) / (perimeter ** 2)
+                        # Calcular la circularidad
+                        circularity = (4 * np.pi * area) / (perimeter ** 2)
 
-                    # Calcular la elipticidad
-                    _, (major_axis, minor_axis), _ = cv2.fitEllipse(
-                        largest_contour)
-                    ellipticity = major_axis / minor_axis
+                        # Calcular la elipticidad
+                        _, (major_axis, minor_axis), _ = cv2.fitEllipse(
+                            largest_contour)
+                        ellipticity = major_axis / minor_axis
 
-                    # Calcular los momentos de Hu
-                    _hu_moments = np.transpose(
-                        cv2.HuMoments(M))  # Siete valores
+                        # Calcular los momentos de Hu
+                        _hu_moments = np.transpose(
+                            cv2.HuMoments(M))  # Siete valores
 
-                    # Agregando alto y ancho
-                    _p1, _p2, _ancho, _alto = cv2.boundingRect(np.uint8(_bin))
+                        # Agregando alto y ancho
+                        _p1, _p2, _ancho, _alto = cv2.boundingRect(
+                            np.uint8(_bin))
 
-                    # Almacenando resultados
-                    _x_new[0, 0] = area
-                    _x_new[0, 1] = perimeter
-                    _x_new[0, 2] = ellipticity
-                    _x_new[0, 3] = center_x
-                    _x_new[0, 4] = center_y
-                    _x_new[0, 5] = circularity
-                    _x_new[0, 6:13] = _hu_moments
-                    _x_new[0, 13] = _alto
-                    _x_new[0, 14] = _ancho
+                        # Almacenando resultados
+                        _x_new[0, 0] = area
+                        _x_new[0, 1] = perimeter
+                        _x_new[0, 2] = ellipticity
+                        _x_new[0, 3] = center_x
+                        _x_new[0, 4] = center_y
+                        _x_new[0, 5] = circularity
+                        _x_new[0, 6:13] = _hu_moments
+                        _x_new[0, 13] = _alto
+                        _x_new[0, 14] = _ancho
 
-                    # Ojo, se debe normalizar
-                    scaler = MinMaxScaler()
+                        # scaler = MinMaxScaler()
 
-                    # Ajustar el escalador a tus datos
-                    # Asume que tienes un conjunto de entrenamiento X_train
-                    scaler.fit(_x_new)
+                        # _x_fit = scaler.fit_transform(_x_new)
+                        # _x_new_normalized = scaler.transform(_x_fit)
 
-                    # Transformar los nuevos datos con el escalador ajustado
-                    _x_new_normalized = scaler.transform(_x_new)
-                    if modelo_entrenado.predict(_x_new_normalized) == 0:
-                        _messaje_response = 'Estoy reconociendo papas'
-                    if modelo_entrenado.predict(_x_new_normalized) == 1:
-                        _messaje_response = 'Estoy reconociendo Doritos'
-                    if modelo_entrenado.predict(_x_new_normalized) == 2:
-                        _messaje_response = 'Estoy reconociendo Cheese tris'
+                        value_predict = modelo_entrenado.predict(_x_new)
+                        if value_predict == 0:
+                            _messaje_response = 'Estoy reconociendo papas'
+                        if value_predict == 1:
+                            _messaje_response = 'Estoy reconociendo Doritos'
+                        if value_predict == 2:
+                            _messaje_response = 'Estoy reconociendo Cheese tris'
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return JsonResponse({'status': 'error', 'message': _messaje_response})
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': e.args})
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     def search_contourns_img_google(request):
         if request.method == 'POST':
@@ -386,7 +385,7 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': e.args})
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     @ csrf_exempt
     def search_contourns_img_pc(request):
@@ -508,7 +507,7 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': e.args})
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     def get_shape(request):
         if 'image_url' in request.GET:
