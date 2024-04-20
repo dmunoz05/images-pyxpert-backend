@@ -19,7 +19,7 @@ import os
 
 
 class ProcessKeys(viewsets.ModelViewSet):
-    def get_key_client_id(self, request):
+    def get_key_client_id(request):
         key_get = request.GET['key']
         try:
             key_validate = config('KEY_GET_VALIDATE_CLIENT_ID')
@@ -32,7 +32,7 @@ class ProcessKeys(viewsets.ModelViewSet):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': e.args})
 
-    def get_key_ia(self, request):
+    def get_key_ia(request):
         key_get = request.GET['key']
         try:
             key_validate = config('KEY_GET_VALIDATE_IA')
@@ -48,7 +48,7 @@ class ProcessKeys(viewsets.ModelViewSet):
 
 class ProcessImages(viewsets.ModelViewSet):
 
-    def characteristic_image_google(self, request):
+    def characteristic_image_google(request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
 
@@ -106,7 +106,7 @@ class ProcessImages(viewsets.ModelViewSet):
                 return JsonResponse({'status': 'error', 'message': e.args})
 
     @csrf_exempt
-    def characteristic_image_pc(self, request):
+    def characteristic_image_pc(request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
@@ -167,7 +167,7 @@ class ProcessImages(viewsets.ModelViewSet):
                 return JsonResponse({'status': 'error', 'message': e.args})
 
     @ csrf_exempt
-    def model_search_DPC(self, request):
+    def model_search_DPC(request):
         if (request.method == 'POST'):
             try:
                 # Leer la imagen del cuerpo de la solicitud
@@ -266,7 +266,7 @@ class ProcessImages(viewsets.ModelViewSet):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': e.args})
 
-    def search_contourns_img_google(self, request):
+    def search_contourns_img_google(request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
