@@ -19,7 +19,7 @@ import os
 
 
 class ProcessKeys(viewsets.ModelViewSet):
-    def get_key_client_id(request):
+    def get_key_client_id(self, request):
         key_get = request.GET['key']
         try:
             key_validate = config('KEY_GET_VALIDATE_CLIENT_ID')
@@ -30,9 +30,9 @@ class ProcessKeys(viewsets.ModelViewSet):
             else:
                 return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Error inesperado'})
+            return JsonResponse({'status': 'error', 'message': e.args})
 
-    def get_key_ia(request):
+    def get_key_ia(self, request):
         key_get = request.GET['key']
         try:
             key_validate = config('KEY_GET_VALIDATE_IA')
@@ -43,12 +43,12 @@ class ProcessKeys(viewsets.ModelViewSet):
             else:
                 return JsonResponse({'status': 'error', 'message': 'Clave incorrecta'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Error inesperado'})
+            return JsonResponse({'status': 'error', 'message': e.args})
 
 
 class ProcessImages(viewsets.ModelViewSet):
 
-    def characteristic_image_google(request):
+    def characteristic_image_google(self, request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
 
@@ -56,17 +56,17 @@ class ProcessImages(viewsets.ModelViewSet):
                 # Leer imagen
                 req = urllib.request.urlopen(image_url)
                 arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
-                Img = cv2.imdecode(arr, -1)
+                result = cv2.imdecode(arr, -1)
 
                 # Procesando la imagen
-                Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
-                Grisinverted2 = cv2.bitwise_not(Gris)
-                Bin = Grisinverted2 > 100
-                Bin = cv2.resize(np.uint8(Bin), (50, 50))
+                g = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+                inverted = cv2.bitwise_not(g)
+                _in = inverted > 100
+                _bin = cv2.resize(np.uint8(_in), (50, 50))
 
                 # Encontrar los contornos de la imagen
                 contours, _ = cv2.findContours(
-                    np.uint8(Bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    np.uint8(_in), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 if len(contours) > 0:
                     # Tomar solo el contorno más grande (puede haber varios)
@@ -92,21 +92,21 @@ class ProcessImages(viewsets.ModelViewSet):
                 ellipticity = major_axis / minor_axis
 
                 # Calcular los momentos de Hu
-                Hu_moments = np.transpose(
+                _hu_moments = np.transpose(
                     cv2.HuMoments(M))  # Siete valores
 
                 # Agregando alto y ancho
-                P1, P2, Width, Height = cv2.boundingRect(np.uint8(Bin))
+                _p1, _p2, _w, _h = cv2.boundingRect(np.uint8(_bin))
 
                 data = {'area': area, 'perimeter': perimeter, 'ellipticity': ellipticity, 'center_x': center_x,
-                        'center_y': center_y, 'circularity': circularity, 'Hu_moments': Hu_moments.tolist(), 'Height': Height, 'Width': Width}
+                        'center_y': center_y, 'circularity': circularity, 'Hu_moments': _hu_moments.tolist(), 'Height': _h, 'Width': _w}
 
                 return JsonResponse({'status': 200, 'characteristics': data})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': e.args})
 
     @csrf_exempt
-    def characteristic_image_pc(request):
+    def characteristic_image_pc(self, request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
@@ -117,17 +117,17 @@ class ProcessImages(viewsets.ModelViewSet):
                     decode_image = base64.b64decode(image_base64)
                     # Decodificar la imagen usando OpenCV
                     im_arr = np.frombuffer(decode_image, dtype=np.uint8)
-                    Img = cv2.imdecode(im_arr, -1)
+                    _image = cv2.imdecode(im_arr, -1)
 
                     # Procesando la imagen
-                    Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
-                    Grisinverted2 = cv2.bitwise_not(Gris)
-                    Bin = Grisinverted2 > 100
-                    Bin = cv2.resize(np.uint8(Bin), (50, 50))
+                    _gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
+                    _grisinverted2 = cv2.bitwise_not(_gris)
+                    _in = _grisinverted2 > 100
+                    _bin = cv2.resize(np.uint8(_in), (50, 50))
 
                     # Encontrar los contornos de la imagen
                     contours, _ = cv2.findContours(
-                        np.uint8(Bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        np.uint8(_bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                     if len(contours) > 0:
                         # Tomar solo el contorno más grande (puede haber varios)
@@ -153,32 +153,32 @@ class ProcessImages(viewsets.ModelViewSet):
                     ellipticity = major_axis / minor_axis
 
                     # Calcular los momentos de Hu
-                    Hu_moments = np.transpose(
+                    _hu_moments = np.transpose(
                         cv2.HuMoments(M))  # Siete valores
 
                     # Agregando alto y ancho
-                    P1, P2, Width, Height = cv2.boundingRect(np.uint8(Bin))
+                    _p1, _p2, _w, _h = cv2.boundingRect(np.uint8(_bin))
 
                     data = {'area': area, 'perimeter': perimeter, 'ellipticity': ellipticity, 'center_x': center_x,
-                            'center_y': center_y, 'circularity': circularity, 'Hu_moments': Hu_moments.tolist(), 'Height': Height, 'Width': Width}
+                            'center_y': center_y, 'circularity': circularity, 'Hu_moments': _hu_moments.tolist(), 'Height': _h, 'Width': _w}
 
                 return JsonResponse({'status': 200, 'characteristics': data})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': e.args})
 
     @ csrf_exempt
-    def model_search_DPC(request):
-        if request.method == 'POST':
+    def model_search_DPC(self, request):
+        if (request.method == 'POST'):
             try:
                 # Leer la imagen del cuerpo de la solicitud
                 body_unicode = request.body.decode('utf-8')
                 body_data = json.loads(body_unicode)
                 image_base64 = body_data.get('image')
-                if image_base64:
+                if (image_base64):
                     decode_image = base64.b64decode(image_base64)
                     # Decodificar la imagen usando OpenCV
                     im_arr = np.frombuffer(decode_image, dtype=np.uint8)
-                    Img = cv2.imdecode(im_arr, -1)
+                    _image = cv2.imdecode(im_arr, -1)
 
                     # Obtener el directorio de trabajo actual
                     cwd = os.getcwd()
@@ -189,25 +189,23 @@ class ProcessImages(viewsets.ModelViewSet):
                     with open(current_directory, 'rb') as f:
                         modelo_entrenado = pickle.load(f)
 
-                    # modelo_entrenado = joblib.load(current_directory)
-
                     # Procesando la imagen
-                    Gris = cv2.cvtColor(Img, cv2.COLOR_BGR2GRAY)
-                    Grisinverted2 = cv2.bitwise_not(Gris)
-                    Bin = Grisinverted2 > 100
-                    Bin = cv2.resize(np.uint8(Bin), (50, 50))
+                    _gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
+                    _grisinverted2 = cv2.bitwise_not(_gris)
+                    _in = _grisinverted2 > 100
+                    _bin = cv2.resize(np.uint8(_in), (50, 50))
 
-                    plt.imshow(Bin, vmin='0', vmax='1', cmap='gray')
+                    plt.imshow(_bin, vmin='0', vmax='1', cmap='gray')
                     plt.show()
 
                     # Midiendo el área de las letras (Igual que en el entrenamiento)
-                    X_new = np.zeros((1, 15))
+                    _x_new = np.zeros((1, 15))
 
                     # Encontrar los contornos de la imagen
                     contours, _ = cv2.findContours(
-                        np.uint8(Bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        np.uint8(_bin), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                    if len(contours) > 0:
+                    if (len(contours) > 0):
                         # Tomar solo el contorno más grande (puede haber varios)
                         largest_contour = max(contours, key=cv2.contourArea)
 
@@ -231,45 +229,44 @@ class ProcessImages(viewsets.ModelViewSet):
                     ellipticity = major_axis / minor_axis
 
                     # Calcular los momentos de Hu
-                    Hu_moments = np.transpose(
+                    _hu_moments = np.transpose(
                         cv2.HuMoments(M))  # Siete valores
 
                     # Agregando alto y ancho
-                    P1, P2, Ancho, Alto = cv2.boundingRect(np.uint8(Bin))
+                    _p1, _p2, _ancho, _alto = cv2.boundingRect(np.uint8(_bin))
 
                     # Almacenando resultados
-                    X_new[0, 0] = area
-                    X_new[0, 1] = perimeter
-                    X_new[0, 2] = ellipticity
-                    X_new[0, 3] = center_x
-                    X_new[0, 4] = center_y
-                    X_new[0, 5] = circularity
-                    X_new[0, 6:13] = Hu_moments
-                    X_new[0, 13] = Alto
-                    X_new[0, 14] = Ancho
+                    _x_new[0, 0] = area
+                    _x_new[0, 1] = perimeter
+                    _x_new[0, 2] = ellipticity
+                    _x_new[0, 3] = center_x
+                    _x_new[0, 4] = center_y
+                    _x_new[0, 5] = circularity
+                    _x_new[0, 6:13] = _hu_moments
+                    _x_new[0, 13] = _alto
+                    _x_new[0, 14] = _ancho
 
                     # Ojo, se debe normalizar
                     scaler = MinMaxScaler()
 
                     # Ajustar el escalador a tus datos
                     # Asume que tienes un conjunto de entrenamiento X_train
-                    scaler.fit(X_new)
+                    scaler.fit(_x_new)
 
                     # Transformar los nuevos datos con el escalador ajustado
-                    X_new_normalized = scaler.transform(X_new)
-
-                    if modelo_entrenado.predict(X_new_normalized) == 0:
-                        messajeResponse = 'Estoy reconociendo papas'
-                    if modelo_entrenado.predict(X_new_normalized) == 1:
-                        messajeResponse = 'Estoy reconociendo Doritos'
-                    if modelo_entrenado.predict(X_new_normalized) == 2:
-                        messajeResponse = 'Estoy reconociendo Cheese tris'
+                    _x_new_normalized = scaler.transform(_x_new)
+                    if modelo_entrenado.predict(_x_new_normalized) == 0:
+                        _messaje_response = 'Estoy reconociendo papas'
+                    if modelo_entrenado.predict(_x_new_normalized) == 1:
+                        _messaje_response = 'Estoy reconociendo Doritos'
+                    if modelo_entrenado.predict(_x_new_normalized) == 2:
+                        _messaje_response = 'Estoy reconociendo Cheese tris'
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
-                return JsonResponse({'status': 'error', 'message': messajeResponse})
+                return JsonResponse({'status': 'error', 'message': _messaje_response})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': e.args})
 
-    def search_contourns_img_google(request):
+    def search_contourns_img_google(self, request):
         if request.method == 'POST':
             try:
                 # Leer la imagen del cuerpo de la solicitud
@@ -280,9 +277,9 @@ class ProcessImages(viewsets.ModelViewSet):
                     decode_image = base64.b64decode(image_base64)
                     # Decodificar la imagen usando OpenCV
                     im_arr = np.frombuffer(decode_image, dtype=np.uint8)
-                    Img = cv2.imdecode(im_arr, -1)
+                    _img = cv2.imdecode(im_arr, -1)
 
-                    def draw(mask, color, textColor, img):
+                    def draw(mask, color, text_color, img):
                         contornos, _ = cv2.findContours(
                             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                         for c in contornos:
@@ -295,92 +292,93 @@ class ProcessImages(viewsets.ModelViewSet):
                                 y = int(M["m01"]/M["m00"])
                                 cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
                                 font = cv2.FONT_HERSHEY_SIMPLEX
-                                cv2.putText(img, textColor, (x+10, y),
+                                cv2.putText(img, text_color, (x+10, y),
                                             font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
-                                newContourn = cv2.convexHull(c)
+                                new_contourn = cv2.convexHull(c)
                                 cv2.drawContours(
-                                    Img, [newContourn], 0, color, 3)
+                                    _img, [new_contourn], 0, color, 3)
 
                     # Colores HSV
 
                     # Rojo
-                    redBajo1 = np.array([0, 100, 20], np.uint8)
-                    redAlto1 = np.array([5, 255, 255], np.uint8)
-                    redBajo2 = np.array([175, 100, 20], np.uint8)
-                    redAlto2 = np.array([180, 255, 255], np.uint8)
+                    red_bajo1 = np.array([0, 100, 20], np.uint8)
+                    red_alto1 = np.array([5, 255, 255], np.uint8)
+                    red_bajo2 = np.array([175, 100, 20], np.uint8)
+                    red_alto2 = np.array([180, 255, 255], np.uint8)
 
                     # Naranja
-                    orangeBajo = np.array([5, 100, 20], np.uint8)
-                    orangeAlto = np.array([15, 255, 255], np.uint8)
+                    orange_bajo = np.array([5, 100, 20], np.uint8)
+                    orange_alto = np.array([15, 255, 255], np.uint8)
 
                     # Amarillo
-                    amarilloBajo = np.array([15, 100, 20], np.uint8)
-                    amarilloAlto = np.array([45, 255, 255], np.uint8)
+                    amarillo_bajo = np.array([15, 100, 20], np.uint8)
+                    amarillo_alto = np.array([45, 255, 255], np.uint8)
 
                     # Verde
-                    verdeBajo = np.array([45, 100, 20], np.uint8)
-                    verdeAlto = np.array([85, 255, 255], np.uint8)
+                    verde_bajo = np.array([45, 100, 20], np.uint8)
+                    verde_alto = np.array([85, 255, 255], np.uint8)
 
                     # Azul claro
-                    azulBajo1 = np.array([100, 100, 20], np.uint8)
-                    azulAlto1 = np.array([125, 255, 255], np.uint8)
+                    azul_bajo1 = np.array([100, 100, 20], np.uint8)
+                    azul_alto1 = np.array([125, 255, 255], np.uint8)
 
                     # Azul oscuro
-                    azulBajo2 = np.array([125, 100, 20], np.uint8)
-                    azulAlto2 = np.array([130, 255, 255], np.uint8)
+                    azul_bajo2 = np.array([125, 100, 20], np.uint8)
+                    azul_alto2 = np.array([130, 255, 255], np.uint8)
 
                     # Morado
-                    moradoBajo = np.array([135, 100, 20], np.uint8)
-                    moradoAlto = np.array([145, 255, 255], np.uint8)
+                    morado_bajo = np.array([135, 100, 20], np.uint8)
+                    morado_alto = np.array([145, 255, 255], np.uint8)
 
                     # Violeta
-                    violetaBajo = np.array([145, 100, 20], np.uint8)
-                    violetaAlto = np.array([170, 255, 255], np.uint8)
+                    violeta_bajo = np.array([145, 100, 20], np.uint8)
+                    violeta_alto = np.array([170, 255, 255], np.uint8)
 
-                    frameHSV = cv2.cvtColor(Img, cv2.COLOR_BGR2HSV)
+                    frame_hsv = cv2.cvtColor(_img, cv2.COLOR_BGR2HSV)
                     # Detectamos los colores
 
                     # Rojo
-                    maskRed1 = cv2.inRange(frameHSV, redBajo1, redAlto1)
-                    maskRed2 = cv2.inRange(frameHSV, redBajo2, redAlto2)
-                    maskRed = cv2.add(maskRed1, maskRed2)
+                    mask_red1 = cv2.inRange(frame_hsv, red_bajo1, red_alto1)
+                    mask_red2 = cv2.inRange(frame_hsv, red_bajo2, red_alto2)
+                    mask_red = cv2.add(mask_red1, mask_red2)
 
                     # Naranja
-                    maskOrange = cv2.inRange(frameHSV, orangeBajo, orangeAlto)
+                    mask_orange = cv2.inRange(
+                        frame_hsv, orange_bajo, orange_alto)
 
                     # Amarillo
-                    maskAmarillo = cv2.inRange(
-                        frameHSV, amarilloBajo, amarilloAlto)
+                    mask_amarillo = cv2.inRange(
+                        frame_hsv, amarillo_bajo, amarillo_alto)
 
                     # Verde
-                    maskVerde = cv2.inRange(frameHSV, verdeBajo, verdeAlto)
+                    mask_verde = cv2.inRange(frame_hsv, verde_bajo, verde_alto)
 
                     # Azul
-                    maskAzul1 = cv2.inRange(frameHSV, azulBajo1, azulAlto1)
-                    maskAzul2 = cv2.inRange(frameHSV, azulBajo2, azulAlto2)
-                    maskAzul = cv2.add(maskAzul1, maskAzul2)
+                    mask_azul1 = cv2.inRange(frame_hsv, azul_bajo1, azul_alto1)
+                    mask_azul2 = cv2.inRange(frame_hsv, azul_bajo2, azul_alto2)
+                    mask_azul = cv2.add(mask_azul1, mask_azul2)
 
                     # Morado
-                    maskMorado = cv2.inRange(frameHSV, moradoBajo, moradoAlto)
+                    mask_morado = cv2.inRange(
+                        frame_hsv, morado_bajo, morado_alto)
 
                     # Violeta
-                    maskVioleta = cv2.inRange(
-                        frameHSV, violetaBajo, violetaAlto)
+                    mask_violeta = cv2.inRange(
+                        frame_hsv, violeta_bajo, violeta_alto)
 
                     # Dibujamos los contornos
-                    draw(maskRed, (0, 0, 255), 'Rojo', Img)
-                    draw(maskOrange, (0, 165, 255), 'Naranja', Img)
-                    draw(maskAmarillo, (0, 255, 255), 'Amarillo', Img)
-                    draw(maskVerde, (0, 255, 0), 'Verde', Img)
-                    draw(maskAzul, (255, 0, 0), 'Azul', Img)
-                    draw(maskMorado, (255, 0, 255), 'Morado', Img)
-                    draw(maskVioleta, (255, 0, 255), 'Violeta', Img)
-                    # draw(maskOrangeAndYellow, (0, 165, 255), 'Centro', Img)
+                    draw(mask_red, (0, 0, 255), 'Rojo', _img)
+                    draw(mask_orange, (0, 165, 255), 'Naranja', _img)
+                    draw(mask_amarillo, (0, 255, 255), 'Amarillo', _img)
+                    draw(mask_verde, (0, 255, 0), 'Verde', _img)
+                    draw(mask_azul, (255, 0, 0), 'Azul', _img)
+                    draw(mask_morado, (255, 0, 255), 'Morado', _img)
+                    draw(mask_violeta, (255, 0, 255), 'Violeta', _img)
 
                     buffer = BytesIO()
 
                     # Convertir la imagen a BytesIO
-                    Image.fromarray(Img).save(buffer, format='PNG')
+                    Image.fromarray(_img).save(buffer, format='PNG')
 
                     # Obtener los datos de la imagen
                     image_data = buffer.getvalue()
@@ -388,7 +386,7 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
+                return JsonResponse({'status': 'error', 'message': e.args})
 
     @ csrf_exempt
     def search_contourns_img_pc(request):
@@ -510,7 +508,7 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
-                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
+                return JsonResponse({'status': 'error', 'message': e.args})
 
     def get_shape(request):
         if 'image_url' in request.GET:
