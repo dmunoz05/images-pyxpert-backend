@@ -183,15 +183,15 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Obtener el directorio de trabajo actual
                     cwd = os.getcwd()
                     current_directory = os.path.join(
-                        cwd, 'models', 'Modelo_knn4.pkl')
+                        cwd, 'models', 'Modelo_knn5.pkl')
 
                     # Cargar archivos desde el sistema local
                     with open(current_directory, 'rb') as f:
                         # Con el KNN5
-                        # modelo_entrenado = pickle.load(f)
+                        modelo_entrenado = pickle.load(f)
 
                         # Con el KNN4
-                        modelo_entrenado = joblib.load(f)
+                        # modelo_entrenado = joblib.load(f)
 
                     # Procesando la imagen
                     _gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
@@ -250,8 +250,10 @@ class ProcessImages(viewsets.ModelViewSet):
 
                         # scaler = MinMaxScaler()
 
-                        # _x_fit = scaler.fit_transform(_x_new)
-                        # _x_new_normalized = scaler.transform(_x_fit)
+                        # _x_fit = scaler.fit(_x_new)
+
+                        # x_fit = scaler.fit_transform(_x_new)
+                        # _x_new_normalized = scaler.transform(_x_new)
 
                         value_predict = modelo_entrenado.predict(_x_new)
                         if value_predict == 0:
