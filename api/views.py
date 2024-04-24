@@ -12,8 +12,8 @@ from PIL import Image
 import urllib.request
 import numpy as np
 import base64
-import pickle
 import joblib
+import pickle
 import json
 import cv2
 import os
@@ -268,123 +268,119 @@ class ProcessImages(viewsets.ModelViewSet):
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
     def search_contourns_img_google(request):
-        if request.method == 'POST':
+        if 'image_url' in request.GET:
+            image_url = request.GET['image_url']
             try:
-                # Leer la imagen del cuerpo de la solicitud
-                body_unicode = request.body.decode('utf-8')
-                body_data = json.loads(body_unicode)
-                image_base64 = body_data.get('image')
-                if image_base64:
-                    decode_image = base64.b64decode(image_base64)
-                    # Decodificar la imagen usando OpenCV
-                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
-                    _img = cv2.imdecode(im_arr, -1)
+                # Leer imagen
+                req = urllib.request.urlopen(image_url)
+                arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
+                _img = cv2.imdecode(arr, -1)
 
-                    def draw(mask, color, text_color, img):
-                        contornos, _ = cv2.findContours(
-                            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                        for c in contornos:
-                            area = cv2.contourArea(c)
-                            if area > 2000:
-                                M = cv2.moments(c)
-                                if (M["m00"] == 0):
-                                    M["m00"] = 1
-                                x = int(M["m10"]/M["m00"])
-                                y = int(M["m01"]/M["m00"])
-                                cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
-                                font = cv2.FONT_HERSHEY_SIMPLEX
-                                cv2.putText(img, text_color, (x+10, y),
-                                            font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
-                                new_contourn = cv2.convexHull(c)
-                                cv2.drawContours(
-                                    _img, [new_contourn], 0, color, 3)
+                def draw(mask, color, text_color, img):
+                    contornos, _ = cv2.findContours(
+                        mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    for c in contornos:
+                        area = cv2.contourArea(c)
+                        if area > 2000:
+                            M = cv2.moments(c)
+                            if (M["m00"] == 0):
+                                M["m00"] = 1
+                            x = int(M["m10"]/M["m00"])
+                            y = int(M["m01"]/M["m00"])
+                            cv2.circle(img, (x, y), 7, (0, 255, 0), -1)
+                            font = cv2.FONT_HERSHEY_SIMPLEX
+                            cv2.putText(img, text_color, (x+10, y),
+                                        font, 0.95, (0, 255, 0), 1, cv2.LINE_AA)
+                            new_contourn = cv2.convexHull(c)
+                            cv2.drawContours(
+                                _img, [new_contourn], 0, color, 3)
 
-                    # Colores HSV
+                # Colores HSV
 
-                    # Rojo
-                    red_bajo1 = np.array([0, 100, 20], np.uint8)
-                    red_alto1 = np.array([5, 255, 255], np.uint8)
-                    red_bajo2 = np.array([175, 100, 20], np.uint8)
-                    red_alto2 = np.array([180, 255, 255], np.uint8)
+                # Rojo
+                red_bajo1 = np.array([0, 100, 20], np.uint8)
+                red_alto1 = np.array([5, 255, 255], np.uint8)
+                red_bajo2 = np.array([175, 100, 20], np.uint8)
+                red_alto2 = np.array([180, 255, 255], np.uint8)
 
-                    # Naranja
-                    orange_bajo = np.array([5, 100, 20], np.uint8)
-                    orange_alto = np.array([15, 255, 255], np.uint8)
+                # Naranja
+                orange_bajo = np.array([5, 100, 20], np.uint8)
+                orange_alto = np.array([15, 255, 255], np.uint8)
 
-                    # Amarillo
-                    amarillo_bajo = np.array([15, 100, 20], np.uint8)
-                    amarillo_alto = np.array([45, 255, 255], np.uint8)
+                # Amarillo
+                amarillo_bajo = np.array([15, 100, 20], np.uint8)
+                amarillo_alto = np.array([45, 255, 255], np.uint8)
 
-                    # Verde
-                    verde_bajo = np.array([45, 100, 20], np.uint8)
-                    verde_alto = np.array([85, 255, 255], np.uint8)
+                # Verde
+                verde_bajo = np.array([45, 100, 20], np.uint8)
+                verde_alto = np.array([85, 255, 255], np.uint8)
 
-                    # Azul claro
-                    azul_bajo1 = np.array([100, 100, 20], np.uint8)
-                    azul_alto1 = np.array([125, 255, 255], np.uint8)
+                # Azul claro
+                azul_bajo1 = np.array([100, 100, 20], np.uint8)
+                azul_alto1 = np.array([125, 255, 255], np.uint8)
 
-                    # Azul oscuro
-                    azul_bajo2 = np.array([125, 100, 20], np.uint8)
-                    azul_alto2 = np.array([130, 255, 255], np.uint8)
+                # Azul oscuro
+                azul_bajo2 = np.array([125, 100, 20], np.uint8)
+                azul_alto2 = np.array([130, 255, 255], np.uint8)
 
-                    # Morado
-                    morado_bajo = np.array([135, 100, 20], np.uint8)
-                    morado_alto = np.array([145, 255, 255], np.uint8)
+                # Morado
+                morado_bajo = np.array([135, 100, 20], np.uint8)
+                morado_alto = np.array([145, 255, 255], np.uint8)
 
-                    # Violeta
-                    violeta_bajo = np.array([145, 100, 20], np.uint8)
-                    violeta_alto = np.array([170, 255, 255], np.uint8)
+                # Violeta
+                violeta_bajo = np.array([145, 100, 20], np.uint8)
+                violeta_alto = np.array([170, 255, 255], np.uint8)
 
-                    frame_hsv = cv2.cvtColor(_img, cv2.COLOR_BGR2HSV)
-                    # Detectamos los colores
+                frame_hsv = cv2.cvtColor(_img, cv2.COLOR_BGR2HSV)
+                # Detectamos los colores
 
-                    # Rojo
-                    mask_red1 = cv2.inRange(frame_hsv, red_bajo1, red_alto1)
-                    mask_red2 = cv2.inRange(frame_hsv, red_bajo2, red_alto2)
-                    mask_red = cv2.add(mask_red1, mask_red2)
+                # Rojo
+                mask_red1 = cv2.inRange(frame_hsv, red_bajo1, red_alto1)
+                mask_red2 = cv2.inRange(frame_hsv, red_bajo2, red_alto2)
+                mask_red = cv2.add(mask_red1, mask_red2)
 
-                    # Naranja
-                    mask_orange = cv2.inRange(
-                        frame_hsv, orange_bajo, orange_alto)
+                # Naranja
+                mask_orange = cv2.inRange(
+                    frame_hsv, orange_bajo, orange_alto)
 
-                    # Amarillo
-                    mask_amarillo = cv2.inRange(
-                        frame_hsv, amarillo_bajo, amarillo_alto)
+                # Amarillo
+                mask_amarillo = cv2.inRange(
+                    frame_hsv, amarillo_bajo, amarillo_alto)
 
-                    # Verde
-                    mask_verde = cv2.inRange(frame_hsv, verde_bajo, verde_alto)
+                # Verde
+                mask_verde = cv2.inRange(frame_hsv, verde_bajo, verde_alto)
 
-                    # Azul
-                    mask_azul1 = cv2.inRange(frame_hsv, azul_bajo1, azul_alto1)
-                    mask_azul2 = cv2.inRange(frame_hsv, azul_bajo2, azul_alto2)
-                    mask_azul = cv2.add(mask_azul1, mask_azul2)
+                # Azul
+                mask_azul1 = cv2.inRange(frame_hsv, azul_bajo1, azul_alto1)
+                mask_azul2 = cv2.inRange(frame_hsv, azul_bajo2, azul_alto2)
+                mask_azul = cv2.add(mask_azul1, mask_azul2)
 
-                    # Morado
-                    mask_morado = cv2.inRange(
-                        frame_hsv, morado_bajo, morado_alto)
+                # Morado
+                mask_morado = cv2.inRange(
+                    frame_hsv, morado_bajo, morado_alto)
 
-                    # Violeta
-                    mask_violeta = cv2.inRange(
-                        frame_hsv, violeta_bajo, violeta_alto)
+                # Violeta
+                mask_violeta = cv2.inRange(
+                    frame_hsv, violeta_bajo, violeta_alto)
 
-                    # Dibujamos los contornos
-                    draw(mask_red, (0, 0, 255), 'Rojo', _img)
-                    draw(mask_orange, (0, 165, 255), 'Naranja', _img)
-                    draw(mask_amarillo, (0, 255, 255), 'Amarillo', _img)
-                    draw(mask_verde, (0, 255, 0), 'Verde', _img)
-                    draw(mask_azul, (255, 0, 0), 'Azul', _img)
-                    draw(mask_morado, (255, 0, 255), 'Morado', _img)
-                    draw(mask_violeta, (255, 0, 255), 'Violeta', _img)
+                # Dibujamos los contornos
+                draw(mask_red, (0, 0, 255), 'Rojo', _img)
+                draw(mask_orange, (0, 165, 255), 'Naranja', _img)
+                draw(mask_amarillo, (0, 255, 255), 'Amarillo', _img)
+                draw(mask_verde, (0, 255, 0), 'Verde', _img)
+                draw(mask_azul, (255, 0, 0), 'Azul', _img)
+                draw(mask_morado, (255, 0, 255), 'Morado', _img)
+                draw(mask_violeta, (255, 0, 255), 'Violeta', _img)
 
-                    buffer = BytesIO()
+                buffer = BytesIO()
 
-                    # Convertir la imagen a BytesIO
-                    Image.fromarray(_img).save(buffer, format='PNG')
+                # Convertir la imagen a BytesIO
+                Image.fromarray(_img).save(buffer, format='PNG')
 
-                    # Obtener los datos de la imagen
-                    image_data = buffer.getvalue()
+                # Obtener los datos de la imagen
+                image_data = buffer.getvalue()
 
-                    # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
+                # Aquí devuelvo un mensaje JSON indicando que la imagen ha sido procesada
                 return HttpResponse(image_data, content_type="image/png")
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
