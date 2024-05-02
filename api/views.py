@@ -12,6 +12,7 @@ from PIL import Image
 import urllib.request
 import numpy as np
 import base64
+import qrcode
 import joblib
 import pickle
 import json
@@ -49,10 +50,78 @@ class ProcessKeys(viewsets.ModelViewSet):
 
 class ProcessImages(viewsets.ModelViewSet):
 
+    def process_qr_image_google(request):
+        return 'data'
+
+    @csrf_exempt
+    def process_qr_image_pc(request):
+        if request.method == 'POST':
+            try:
+                # Leer la imagen del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                image_base64 = body_data.get('image')
+
+                if image_base64:
+                    # Decodificar la imagen base64
+                    decode_image = base64.b64decode(image_base64)
+                    _image = cv2.imdecode(np.frombuffer(
+                        decode_image, dtype=np.uint8), -1)
+
+                    # Usar detector de rostros
+                    Detector = cv2.CascadeClassifier(
+                        '/haarcascade_frontalface_default.xml')
+                    I_gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
+                    Cara = Detector.detectMultiScale(I_gris, 1.1, 5)
+
+                    for (x, y, w, h) in Cara:
+                        Recorte = I_gris[y:y+h, x:x+w]
+                        Recorte = cv2.resize(
+                            Recorte, (48, 48), interpolation=cv2.INTER_AREA)
+
+                    # Codificar la imagen recortada en base64
+                    _, buffer = cv2.imencode('.jpg', Recorte)
+                    base64_img = base64.b64encode(buffer).decode('utf-8')
+
+                    # Generar el código QR
+                    # img = qrcode.make(base64_img)
+                    # image_data = base64.b64encode(img.decode("utf-8"))
+
+                    # Generar el código QR
+                    img = qrcode.make(base64_img)
+                    type(img)
+                    img.save("qr.png")
+
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+                    current_directory = os.path.join(cwd, 'qr.png')
+
+                    # Leer la imagen desde el archivo
+                    with open(current_directory, "rb") as img_file:
+                        # Codificar la imagen como base64
+                        image_data = base64.b64encode(
+                            img_file.read()).decode("utf-8")
+
+                    # Decodificar la imagen base64
+                    decode_image = base64.b64decode(image_data)
+                    im_arr = np.frombuffer(decode_image, dtype=np.uint8)
+                    Img = cv2.imdecode(im_arr, cv2.IMREAD_COLOR)
+
+                    buffer = BytesIO()
+
+                    # Convertir la imagen a BytesIO
+                    Image.fromarray(Img).save(buffer, format='PNG')
+
+                    # Obtener los datos de la imagen
+                    image_qr = buffer.getvalue()
+
+                    return HttpResponse(image_qr, content_type="image/png")
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
+
     def characteristic_image_google(request):
         if 'image_url' in request.GET:
             image_url = request.GET['image_url']
-
             try:
                 # Leer imagen
                 req = urllib.request.urlopen(image_url)
