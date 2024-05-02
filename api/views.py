@@ -68,9 +68,17 @@ class ProcessImages(viewsets.ModelViewSet):
                     _image = cv2.imdecode(np.frombuffer(
                         decode_image, dtype=np.uint8), -1)
 
-                    # Usar detector de rostros
-                    Detector = cv2.CascadeClassifier(
-                        '/haarcascade_frontalface_default.xml')
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+                    current_directory = os.path.join(
+                        cwd, 'models', 'haarcascade_frontalface_default.xml')
+
+                    if ('Repositorios' in current_directory):
+                        Detector = cv2.CascadeClassifier(
+                            'models/haarcascade_frontalface_default.xml')
+                    else:
+                        Detector = cv2.CascadeClassifier(current_directory)
+
                     I_gris = cv2.cvtColor(_image, cv2.COLOR_BGR2GRAY)
                     Cara = Detector.detectMultiScale(I_gris, 1.1, 5)
 
