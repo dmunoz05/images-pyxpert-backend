@@ -69,6 +69,7 @@ threadpoolctl==3.4.0
 tokenizers==0.15.2
 torch==2.2.2
 tqdm==4.66.2
+Twisted==24.3.0
 txaio==23.1.1
 typing_extensions==4.10.0
 tzdata==2024.1
