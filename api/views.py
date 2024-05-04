@@ -51,6 +51,11 @@ class ProcessKeys(viewsets.ModelViewSet):
 class ProcessImages(viewsets.ModelViewSet):
 
     def process_qr_image_google(request):
+        if request.method == 'POST':
+            # Leer la imagen del cuerpo de la solicitud
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            image_url = body_data.get('image')
         return 'data'
 
     @csrf_exempt
