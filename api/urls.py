@@ -17,4 +17,5 @@ urlpatterns = [
     path('process-characteristic-image-google/', views.ProcessImages.characteristic_image_google, name='process_characteristic_image_google'),
     path('process-characteristic-image-pc/', views.ProcessImages.characteristic_image_pc, name='process_characteristic_image_pc'),
     path('process-image-qr-pc/', views.ProcessImages.process_qr_image_pc, name='process_qr_image_pc'),
+    path('process-model-listening/', views.ProcessAudio.process_model_listening, name='process_model_listening'),
 ]

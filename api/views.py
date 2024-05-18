@@ -47,9 +47,38 @@ class ProcessKeys(viewsets.ModelViewSet):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
+class ProcessAudio(viewsets.ModelViewSet):
+    @csrf_exempt
+    def process_model_listening(request):
+        if request.method == 'POST':
+            try:
+                # Leer el blob del audio del cuerpo de la solicitud
+                body_unicode = request.body.decode('utf-8')
+                body_data = json.loads(body_unicode)
+                audio_base64 = body_data.get('audio')
+
+                if audio_base64:
+                    # Decodificar el audio base64
+                    decode_audio = base64.b64decode(audio_base64)
+
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+                    audio_file_path = 'decoded_audio.wav'
+                    current_directory = os.path.join(cwd, audio_file_path)
+
+                    # Guardar el audio en un archivo
+                    with open(current_directory, 'wb') as audio_file:
+                        audio_file.write(decode_audio)
+
+                    # Aquí puedes agregar la lógica para procesar o reproducir el audio
+                    # Por ejemplo, puedes reproducir el audio o hacer algún procesamiento adicional
+                    return JsonResponse({'status': 'error', 'message': 'Proceso exitoso'})
+                    # return HttpResponse({'status': 'success', 'message': 'Proceso exitoso'})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': f'Error al procesar el audio: {str(e)}'})
+        return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 class ProcessImages(viewsets.ModelViewSet):
-
     @csrf_exempt
     def process_qr_image_pc(request):
         if request.method == 'POST':
