@@ -1,24 +1,28 @@
+from sklearn.model_selection import StratifiedShuffleSplit
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import StratifiedShuffleSplit
+from django.core.files.base import ContentFile
 from rest_framework import viewsets
 from django.conf import settings
 import matplotlib.pyplot as plt
 from decouple import config
-from io import StringIO
 from io import BytesIO
 from PIL import Image
 import urllib.request
 import numpy as np
+import soundfile
+import requests
+import librosa
 import base64
 import qrcode
 import joblib
 import pickle
+import wave
 import json
 import cv2
 import os
-
+import io
 
 class ProcessKeys(viewsets.ModelViewSet):
     def get_key_client_id(request):
@@ -47,6 +51,7 @@ class ProcessKeys(viewsets.ModelViewSet):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'Error al procesar la imagen: {}'.format(str(e))})
 
+
 class ProcessAudio(viewsets.ModelViewSet):
     @csrf_exempt
     def process_model_listening(request):
@@ -59,24 +64,54 @@ class ProcessAudio(viewsets.ModelViewSet):
 
                 if audio_base64:
                     # Decodificar el audio base64
-                    decode_audio = base64.b64decode(audio_base64)
+                    decode_split = audio_base64.split(',')[1]
+                    decode_audio = base64.b64decode(decode_split)
 
-                    # Obtener el directorio de trabajo actual
-                    cwd = os.getcwd()
-                    audio_file_path = 'decoded_audio.wav'
-                    current_directory = os.path.join(cwd, audio_file_path)
+                    # Leer el audio desde el buffer en memoria
+                    # audio_buffer = io.BytesIO(decode_audio)
+                    # o = base64.b64encode(bytearray([audio_buffer]))
 
-                    # Guardar el audio en un archivo
-                    with open(current_directory, 'wb') as audio_file:
-                        audio_file.write(decode_audio)
+                    # int_val = int.from_bytes(decode_audio, "big", signed=True)
 
-                    # Aquí puedes agregar la lógica para procesar o reproducir el audio
-                    # Por ejemplo, puedes reproducir el audio o hacer algún procesamiento adicional
+                    # o = base64.b64encode(bytearray([int_val]))
+
+                    # ba = ' '.join(format(x, 'b')
+                    #               for x in bytearray(decode_audio))
+
+                    # Crea un nombre de archivo único (por ejemplo, 'audio.mp3')
+                    audio_path = os.path.join(os.getcwd(), 'models', 'audio.mp3')
+                    # audio_path = os.path.join('/audio.mp3')
+
+                    content_file = ContentFile(decode_audio, audio_path)
+
+                    with open(audio_path, 'wb') as f:
+                        f.write(content_file.read())
+
+                    # r = requests.get("https://file-examples.com/storage/fea8fc38fd63bc5c39cf20b/2017/11/file_example_MP3_700KB.mp3")
+
+                    # with open("example.mp3","wb") as f:
+                    #     f.write(r.content)
+
+                    # Leer el archivo de audio con librosa
+                    x, sr = librosa.load(audio_path, sr=None)
+
+                    X_New = np.resize(x, 50000) #Muestreo
+                    print('Señal muestreada')
+                    plt.plot(X_New)
+                    plt.show()
+                    # print(' ')
+
+                    # Lee el audio desde el archivo de audio
+                    # wav_file = open(audio_path, "wb")
+                    # x, sr = librosa.util.list_examples(wav_file[0])
+                    # x, sr = librosa.example(wav_file)
+
                     return JsonResponse({'status': 'error', 'message': 'Proceso exitoso'})
                     # return HttpResponse({'status': 'success', 'message': 'Proceso exitoso'})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': f'Error al procesar el audio: {str(e)}'})
         return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
 
 class ProcessImages(viewsets.ModelViewSet):
     @csrf_exempt
@@ -286,14 +321,12 @@ class ProcessImages(viewsets.ModelViewSet):
                     # Obtener el directorio de trabajo actual
                     cwd = os.getcwd()
                     current_directory = os.path.join(
-                        cwd, 'models', 'Modelo_knn5.pkl')
+                        cwd, 'models', 'Modelo_pdc.pkl')
 
                     # Cargar archivos desde el sistema local
                     with open(current_directory, 'rb') as f:
                         # Con el KNN5
                         modelo_entrenado = pickle.load(f)
-
-                        # Con el KNN4
                         # modelo_entrenado = joblib.load(f)
 
                     # Procesando la imagen
