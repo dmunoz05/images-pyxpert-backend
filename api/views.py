@@ -97,8 +97,8 @@ class ProcessAudio(viewsets.ModelViewSet):
 
                     X_New = np.resize(x, 50000) #Muestreo
                     print('Señal muestreada')
-                    plt.plot(X_New)
-                    plt.show()
+                    # plt.plot(X_New)
+                    # plt.show()
                     # print(' ')
 
                     # Lee el audio desde el archivo de audio
