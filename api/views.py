@@ -117,7 +117,7 @@ class ProcessAudio(viewsets.ModelViewSet):
                     audio_segment.export(audio_buffer, format="mp3")
                     audio_buffer.seek(0)
 
-                    # x, sr = librosa.load(audio_buffer, sr=None, mono=True)
+                    x, sr = librosa.load(audio_buffer, sr=None, mono=True)
 
                     # with open(audio_path, "rb") as audio_file:
                     #     # samplerate, data = wavfile.read('/audio.wav')
