@@ -56,6 +56,8 @@ pyasn1==0.6.0
 pyasn1_modules==0.4.0
 pycodestyle==2.11.1
 pycparser==2.22
+pydub==0.25.1
+pygame==2.5.2
 pyOpenSSL==24.1.0
 pyparsing==3.1.2
 pypng==0.20220715.0
@@ -67,6 +69,7 @@ PyYAML==6.0.1
 qrcode==7.4.2
 regex==2024.4.16
 requests==2.31.0
+resampy==0.4.3
 scikit-learn==1.2.2
 scipy==1.13.0
 service-identity==24.1.0
@@ -80,6 +83,7 @@ threadpoolctl==3.4.0
 tokenizers==0.15.2
 tqdm==4.66.2
 Twisted==24.3.0
+twisted-iocpsupport==1.0.4
 txaio==23.1.1
 typing_extensions==4.10.0
 tzdata==2024.1
