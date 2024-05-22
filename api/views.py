@@ -87,7 +87,7 @@ class ProcessAudio(viewsets.ModelViewSet):
 
                     audio_files = glob(os.path.join(os.getcwd(), 'models', '*.wav'))
 
-                    ipd.Audio(audio_files[0])
+                    # ipd.Audio(audio_files[0])
 
                     x, sr = librosa.load(audio_files[0], sr=None, mono=True)
                     # Leer el archivo de audio usando pydub
