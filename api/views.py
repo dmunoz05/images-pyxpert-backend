@@ -5,15 +5,18 @@ from sklearn.preprocessing import MinMaxScaler
 from django.core.files.base import ContentFile
 from rest_framework import viewsets
 from django.conf import settings
-import matplotlib.pyplot as plt
-from decouple import config
 from io import BytesIO, StringIO
+import matplotlib.pyplot as plt
 from pydub import AudioSegment
+import IPython.display as ipd
 from scipy.io import wavfile
+from decouple import config
 from pathlib import Path
 import soundfile as sf
-from PIL import Image
+import librosa.display
 import urllib.request
+from PIL import Image
+from glob import glob
 import numpy as np
 import requests
 import librosa
@@ -27,8 +30,6 @@ import json
 import cv2
 import os
 import io
-
-
 
 class ProcessKeys(viewsets.ModelViewSet):
     def get_key_client_id(request):
@@ -72,52 +73,28 @@ class ProcessAudio(viewsets.ModelViewSet):
                     # Decodificar el audio base64
                     decode_split = audio_base64.split(',')[1]
                     decode_audio = base64.b64decode(decode_split)
-                    # waveform, samplerate = sf.read(file=io.BytesIO(decode_audio), dtype='float32')
-
-                    # base64_encoded_sound_file_data = b'T2dnUwACAAAAAAAAAACY...'  # Truncated for brevity
-
-                    # pygame.mixer.init()
-                    # sound_file_data = base64.b64decode(decode_split)
-                    # # just to prove it is an Ogg Vorbis file
-                    # # assert sound_file_data.startswith(b'OggS')
-                    # sound_file = io.BytesIO(sound_file_data)
-                    # # x, sr = librosa.load(audio_path, sr=None)
-                    # # The following line will only work with VALID data. With above example data it will fail.
-                    # sound = pygame.mixer.Sound(sound_file)
-                    # ch = sound.play()
-                    # while ch.get_busy():
-                    #     pygame.time.wait(100)
-
-                    # Leer el audio desde el buffer en memoria
-                    # audio_buffer = io.BytesIO(decode_audio)
-
-                    # use mode = "rb" to read binary file
-                    # o = base64.b64encode(bytearray([audio_buffer]))
-
-                    # int_val = int.from_bytes(decode_audio, "big", signed=True)
-
-                    # o = base64.b64encode(bytearray([int_val]))
-
-                    # ba = ' '.join(format(x, 'b')
-                    #               for x in bytearray(decode_audio))
 
                     # Crea un nombre de archivo único (por ejemplo, 'audio.mp3')
                     audio_path = os.path.join(
-                        os.getcwd(), 'models', 'audio.mp3')
+                        os.getcwd(), 'models', 'audio.wav')
                     # audio_path = os.path.join('/audio.mp3')
+
 
                     content_file = ContentFile(decode_audio, audio_path)
 
                     with open(audio_path, 'wb') as f:
                         f.write(content_file.read())
 
-                    # Leer el archivo de audio usando pydub
-                    audio_segment = AudioSegment.from_mp3(audio_path)
-                    audio_buffer = io.BytesIO()
-                    audio_segment.export(audio_buffer, format="mp3")
-                    audio_buffer.seek(0)
+                    audio_files = glob(os.path.join(os.getcwd(), 'models', '*.wav'))
 
-                    x, sr = librosa.load(audio_buffer, sr=None, mono=True)
+                    ipd.Audio(audio_files[0])
+
+                    x, sr = librosa.load(audio_files[0], sr=None, mono=True)
+                    # Leer el archivo de audio usando pydub
+                    # audio_segment = AudioSegment.from_mp3(audio_path)
+                    # audio_buffer = io.BytesIO()
+                    # audio_segment.export(audio_buffer, format="mp3")
+                    # audio_buffer.seek(0)
 
                     # with open(audio_path, "rb") as audio_file:
                     #     # samplerate, data = wavfile.read('/audio.wav')
@@ -136,7 +113,6 @@ class ProcessAudio(viewsets.ModelViewSet):
                     print('Señal muestreada')
                     # plt.plot(X_New)
                     # plt.show()
-                    # print(' ')
 
                     # Lee el audio desde el archivo de audio
                     # wav_file = open(audio_path, "wb")
