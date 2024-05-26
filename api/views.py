@@ -1,15 +1,14 @@
 from sklearn.model_selection import StratifiedShuffleSplit
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from django.core.files.base import ContentFile
+from scipy.io.wavfile import read, write
 from rest_framework import viewsets
-from django.conf import settings
 from io import BytesIO, StringIO
 import matplotlib.pyplot as plt
-from pydub import AudioSegment
 import IPython.display as ipd
-from scipy.io import wavfile
+from scipy.stats import skew
 from decouple import config
 from pathlib import Path
 import soundfile as sf
@@ -18,18 +17,14 @@ import urllib.request
 from PIL import Image
 from glob import glob
 import numpy as np
-import requests
 import librosa
 import base64
 import qrcode
 import joblib
 import pickle
-import pygame
-import wave
 import json
 import cv2
 import os
-import io
 
 class ProcessKeys(viewsets.ModelViewSet):
     def get_key_client_id(request):
@@ -73,55 +68,218 @@ class ProcessAudio(viewsets.ModelViewSet):
                     # Decodificar el audio base64
                     decode_split = audio_base64.split(',')[1]
                     decode_audio = base64.b64decode(decode_split)
+                    # ba = ' '.join(format(x, 'b') for x in bytearray(decode_audio))
+                    audio_data = np.frombuffer(decode_audio, dtype=np.int16)
+                    # vector_bytes = decode_audio.tobytes()
+                    # vector_bytes_str = str(decode_audio)
+                    # vector_bytes_str_enc = vector_bytes_str.encode()
+                    # bytes_np_dec = vector_bytes_str_enc.decode('unicode-escape').encode('ISO-8859-1')[2:-1]
+                    # audio_data = np.frombuffer(bytes_np_dec, dtype=np.int16)
 
-                    # Crea un nombre de archivo único (por ejemplo, 'audio.mp3')
-                    audio_path = os.path.join(
-                        os.getcwd(), 'models', 'audio.wav')
-                    # audio_path = os.path.join('/audio.mp3')
+
+                    # Probar modelo
+                    Total=1;
+                    Muestreo=5000;
+                    Total_caracteristicas = 5
+                    X_new = np.zeros((Total,Total_caracteristicas))
+                    senal = np.resize(audio_data, Muestreo)
+
+                    #Extracción de características
+                    Varianza = np.var(senal) #1 dato
+                    Desviacion=np.std(senal) #1 dato
+                    rms_amplitude = np.sqrt(np.mean(np.square(senal))) #1 dato
+                    zero_crossings = np.where(np.diff(np.sign(senal)))[0]
+                    zcr = len(zero_crossings) #1 dato
+                    skewness = skew(senal) #1 dato
+
+                    X_new[0,0] = Varianza
+                    X_new[0,1] = Desviacion
+                    X_new[0,2] = rms_amplitude
+                    X_new[0,3] = zcr
+                    X_new[0,4] = skewness
+                    # X_new[i,5] = Y[i]
+
+                    # Normalizar los datos
+                    scaler = StandardScaler()
+                    X_new_normalized = scaler.fit_transform(X_new)
+                    X_new_normalized = scaler.transform(X_new)
+                    # X_new_normalized = scaler.transform(X_new)
+                    # X_new_normalized = scaler.transform(X_new)
+
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+                    # current_directory = os.path.join(cwd, 'models', 'Modelo_listening.pkl')
+                    # current_directory = 'Modelo_listening.pkl'
+
+                    # Obtener el directorio de trabajo actual
+                    cwd = os.getcwd()
+                    current_directory = os.path.join(cwd, 'models', 'Modelo_listening.pkl')
+
+                    # if ('Repositorios' in current_directory):
+                    #     current_directory = 'models/Modelo_listening.pkl'
+                    # else:
+                    #     current_directory = current_directory
+
+                    # Cargar archivos desde el sistema local
+                    with open(current_directory, 'rb') as f:
+                        modelo_entrenado = pickle.load(f) # deserialize using load()with open(current_directory, 'wb') as f:
+                        # modelo_entrenado = joblib.load(f)
+
+                    # _x_fit = scaler.fit(_x_new)
+
+                    # x_fit = scaler.fit_transform(_x_new)
+                    # _x_new_normalized = scaler.transform(_x_new)
+                    # Calcular el valor máximo del array
+                    max_value = X_new.max()
+                    min_value = X_new.min()
+
+                    # if np.isnan(X_new.max) & np.isnan(X_new.min):
+                    if np.isnan(max_value) & np.isnan(min_value):
+                        response = 'No se pudo capturar correctamente la voz, intenta de nuevo'
+                    else:
+                        if modelo_entrenado.predict(X_new) == 0:
+                            response = 'Es un joven'
+                        if modelo_entrenado.predict(X_new) == 1:
+                            response = 'Es un niño'
+                        if modelo_entrenado.predict(X_new) == 2:
+                            response = 'Es un anciano'
 
 
-                    content_file = ContentFile(decode_audio, audio_path)
+                    # Leer archivo y guardar el audio
+                    # audio_path = os.path.join(
+                    #     os.getcwd(), 'models', 'audio.wav')
 
-                    with open(audio_path, 'wb') as f:
-                        f.write(content_file.read())
+                    # audio_path2 = os.path.join(
+                    #     os.getcwd(), 'models', 'audio2.wav')
 
-                    audio_files = glob(os.path.join(os.getcwd(), 'models', '*.wav'))
+                    # Editar audio existente
+                    # Load audio file.
+                    # rate, s = read(audio_path)
+                    # s = audio_data.astype(np.double) / 32767  # Or 32768.
 
-                    # ipd.Audio(audio_files[0])
+                    # # Add amplitude modulation.
+                    # rate = 44100  # Sampling rate.
+                    # m1 = 3  # Message sine 1 [Hz].
+                    # m2 = 7  # Message sine 2 [Hz].
+                    # n = len(s)
+                    # t = np.linspace(0, n / rate, n, endpoint=False)
+                    # m = np.sin(2 * np.pi * m1 * t)  # Message.
+                    # m += np.sin(2 * np.pi * m2 * t)
+                    # m /= 2
+                    # s *= (1 + m)
+                    # s /= 2
+                    # # Save audio file (range of s is [-1, 1]).
+                    # write(audio_path2, rate, np.round(s * 32767).astype(np.int16))
 
-                    x, sr = librosa.load(audio_files[0], sr=None, mono=True)
-                    # Leer el archivo de audio usando pydub
-                    # audio_segment = AudioSegment.from_mp3(audio_path)
-                    # audio_buffer = io.BytesIO()
-                    # audio_segment.export(audio_buffer, format="mp3")
-                    # audio_buffer.seek(0)
+                    # Normalizar la señal de audio
+                    # if np.max(np.abs(audio_data)) > 0:
+                    #     audio_data = audio_data / np.max(np.abs(audio_data))  # Escalar la señal entre -1 y 1
+                    #     # audio_data = (audio_data * 32767).astype(np.int16)  # Escalar la señal a 16 bits
+                    #     audio_data = np.round(audio_data * 32767).astype(np.int16)
+                    # audio_data = ((audio_data + audio_data.min()) *
+                    #               (2 ** 15) / audio_data.ptp()).astype(np.int16)
 
-                    # with open(audio_path, "rb") as audio_file:
-                    #     # samplerate, data = wavfile.read('/audio.wav')
-                    #     content = audio_file.read();
-                    #     audio_io = io.BytesIO(content)
-                    #     value = audio_io.getvalue()
-                    #     data, samplerate = sf.read(value)
-                    #     # x, sr = librosa.load(value, sr=None)
+                    # Tasa de muestreo (asumiendo 44100 Hz, puedes ajustar esto si es diferente)
+                    # rate = 44100
+                    # n = 44100     # Length [samples]
+                    # f = 1000      # Frequency of the sine [Hz]
+                    # t = np.linspace(0, n / rate, n, endpoint=False)
+                    # s = np.sin(2 * np.pi * f * t)
 
-                    # fin = open(audio_path, "rb")
-                    # binary_data = fin.read()
+                    # if np.max(np.abs(audio_data)) > 0:
+                    #     audio_data = ((audio_data + audio_data.min()) * (2 ** 15) / audio_data.ptp()).astype(np.int16)
 
-                    # fin.close()
+                    # with open(audio_path, 'wb') as wav_file:
+                    #     wav_file.write(audio_data.tobytes())
 
-                    X_New = np.resize(x, 50000)  # Muestreo
-                    print('Señal muestreada')
-                    # plt.plot(X_New)
+                    # x, sr = librosa.load(audio_path, sr=None)
+
+                    # Normalizar
+                    # data_audio = audio_data / np.max(np.abs(audio_data))
+                    # data_audio = np.round(data_audio * 32768).astype(np.int16)
+
+
+                    # METODO 1
+                    # rate, s = read(audio_path)
+                    # rate = 44100
+                    # s = audio_data.astype(np.double) / 32768  # Or 32768.
+                    # duracion_audio = len(audio_data) / 44100
+
+                    # # Add amplitude modulation.
+                    # m1 = 3  # Message sine 1 [Hz].
+                    # m2 = 7  # Message sine 2 [Hz].
+                    # n = len(s)
+                    # # t = np.linspace(0, n / audio_data.size, n, endpoint=False)
+                    # t = np.linspace(0, n / rate, len(audio_data), endpoint=False)
+                    # # m = np.sin(2 * m1 * t)  # Message.
+                    # m = np.sin(2 * np.pi * m1 * t)  # Message.
+                    # m += np.sin(2 * np.pi * m2 * t)
+                    # m /= 2
+                    # s *= (1 + m)
+                    # s /= 2
+
+
+                    # METODO 2
+                    # Create waveform
+                    # rate = 44100  # Sampling rate [samples/s]
+                    # n = 44100     # Length [samples]
+                    # f = 1000      # Frequency of the sine [Hz]
+                    # t = np.linspace(0, n / rate, n, endpoint=False)
+                    # left = np.sin(2 * np.pi * f * t)
+                    # left *= np.linspace(1, 0, n)
+                    # right = np.sin(2 * np.pi * f * t)
+                    # right *= np.linspace(0, 1, n)
+                    # s = np.vstack((left, right)).transpose()
+
+                    # write(audio_path, rate,
+                    #       np.round(s * 32767).astype(np.int16))
+
+
+                    # METODO 3
+                    # Parámetros de la señal de audio existente
+                    # rate_audio = 44100  # Tasa de muestreo del audio existente [muestras/s].
+
+                    # # Calcular la duración total del audio en segundos
+                    # duracion_audio = len(audio_data) / rate_audio
+
+                    # # Parámetros de la señal de la onda sinusoidal
+                    # n = len(audio_data)  # Longitud de la señal de audio [muestras].
+                    # f = 1000  # Frecuencia de la onda sinusoidal [Hz].
+                    # t = np.linspace(0, duracion_audio, len(audio_data), endpoint=False)
+                    # # t = np.linspace(0, n / rate_sine, n, endpoint=False)
+                    # s_sine = np.sin(2 * np.pi * f * t)
+
+                    # # Normalizar la señal de audio existente al rango [-1, 1].
+                    # max_value_audio = np.max(np.abs(audio_data))
+                    # audio_data_normalized = audio_data / max_value_audio if max_value_audio > 1 else audio_data
+
+                    # # Normalizar la señal de la onda sinusoidal al rango [-1, 1].
+                    # max_value_sine = np.max(np.abs(s_sine))
+                    # s_sine_normalized = s_sine / max_value_sine if max_value_sine > 1 else s_sine
+
+                    # # Combinar las dos señales de audio.
+                    # s_combined = audio_data_normalized + s_sine_normalized
+
+                    # # Normalizar la señal combinada al rango [-1, 1].
+                    # max_value_combined = np.max(np.abs(s_combined))
+                    # s_combined_normalized = s_combined / max_value_combined if max_value_combined > 1 else s_combined
+
+                    # Guardar la señal de audio combinada en un nuevo archivo WAV.
+                    # write(audio_path, rate_audio, np.round(s_combined_normalized * 32767).astype(np.int16))
+
+                    # write(audio_path, 44100, s)
+
+                    # x, sr = read(audio_path)
+
+                    # X_New = np.resize(sr.astype(np.double) / 32768, 50000)  # Muestreo
+                    # plt.plot(sr)
                     # plt.show()
 
-                    # Lee el audio desde el archivo de audio
-                    # wav_file = open(audio_path, "wb")
-                    # x, sr = librosa.util.list_examples(wav_file[0])
-                    # x, sr = librosa.example(wav_file)
-
-                    return JsonResponse({'status': 'error', 'message': 'Proceso exitoso'})
+                    return JsonResponse({'status': 'error', 'message': response})
                     # return HttpResponse({'status': 'success', 'message': 'Proceso exitoso'})
             except Exception as e:
+                if e.args[0] == 'buffer size must be a multiple of element size':
+                    return JsonResponse({'status': 'error', 'message': f'Error al procesar el audio, intente de nuevo'})
                 return JsonResponse({'status': 'error', 'message': f'Error al procesar el audio: {str(e)}'})
         return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
