@@ -879,10 +879,11 @@ class ProcessImages(viewsets.ModelViewSet):
 
                     # Decodificar la imagen usando OpenCV
                     im_arr = np.frombuffer(decode_image, dtype=np.uint8)
-                    image = cv2.imdecode(im_arr, -1)
+                    image = cv2.imdecode(im_arr, 1)
 
                     # Cambiar a gris
-                    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                    gray_image = cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
+                    # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
                     buffer = BytesIO()
                     # Convertir la imagen a BytesIO
