@@ -23,8 +23,63 @@ import qrcode
 import joblib
 import pickle
 import json
+import pulp
 import cv2
 import os
+
+class ProcessOptimization(viewsets.ModelViewSet):
+    @csrf_exempt
+    def solve_integer_programming(request):
+        if request.method == 'POST':
+            try:
+                body_unicode = request.body.decode('utf-8')
+                data = json.loads(body_unicode)
+
+                problem_type = data.get('problem_type', 'max')
+                num_vars = data.get('num_vars', 0)
+                objective_coeffs = data.get('objective_coeffs', [])
+                constraints = data.get('constraints', [])
+
+                if problem_type == 'max':
+                    problem = pulp.LpProblem("Problema_Programacion_Entera", pulp.LpMaximize)
+                else:
+                    problem = pulp.LpProblem("Problema_Programacion_Entera", pulp.LpMinimize)
+
+                # Crear variables enteras
+                variables = [pulp.LpVariable(f"x{i+1}", lowBound=0, cat=pulp.LpInteger) for i in range(num_vars)]
+
+                # Función objetivo
+                problem += pulp.lpSum([objective_coeffs[i] * variables[i] for i in range(num_vars)])
+
+                # Restricciones
+                for con in constraints:
+                    expr = pulp.lpSum([con['coeffs'][i] * variables[i] for i in range(num_vars)])
+                    if con['relation'] == '<=':
+                        problem += expr <= con['rhs']
+                    elif con['relation'] == '=':
+                        problem += expr == con['rhs']
+                    elif con['relation'] == '>=':
+                        problem += expr >= con['rhs']
+
+                # Resolver
+                solver = pulp.PULP_CBC_CMD(msg=False)
+                problem.solve(solver)
+
+                # Resultado
+                response_data = {
+                    "status": pulp.LpStatus[problem.status],
+                    "optimal_value": pulp.value(problem.objective),
+                    "variables": [
+                        {"name": v.name, "value": int(v.varValue) if v.varValue is not None else None}
+                        for v in variables
+                    ]
+                }
+
+                return JsonResponse(response_data)
+
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': f'Error al resolver la programación entera: {str(e)}'})
+
 
 class ProcessKeys(viewsets.ModelViewSet):
     def get_key_client_id(request):

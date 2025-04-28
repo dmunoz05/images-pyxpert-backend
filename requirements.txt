@@ -104,3 +104,4 @@ webrtcvad==2.0.10
 whitenoise==6.6.0
 zipp==3.18.1
 zope.interface==6.3
+PuLP==3.1.1
