@@ -18,5 +18,5 @@ urlpatterns = [
     path('process-characteristic-image-pc/', views.ProcessImages.characteristic_image_pc, name='process_characteristic_image_pc'),
     path('process-image-qr-pc/', views.ProcessImages.process_qr_image_pc, name='process_qr_image_pc'),
     path('process-model-listening/', views.ProcessAudio.process_model_listening, name='process_model_listening'),
-    path('process-app-io/', views.ProcessApplicationIO.process_app, name='process_app'),
+    path('process-app-io/', views.ProcessApplicationIO.solve_integer_programming, name='process_app'),
 ]
