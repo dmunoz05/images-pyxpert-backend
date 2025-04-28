@@ -27,7 +27,7 @@ import pulp
 import cv2
 import os
 
-class ProcessOptimization(viewsets.ModelViewSet):
+class ProcessApplicationIO(viewsets.ModelViewSet):
     @csrf_exempt
     def solve_integer_programming(request):
         if request.method == 'POST':
